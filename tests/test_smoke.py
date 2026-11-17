@@ -1,7 +1,7 @@
 def test_package_imports():
-    import countertally.protocol.fake
-    import countertally.protocol.node
-    import countertally.protocol.record
-    import countertally.protocol.sync
-    import countertally.protocol.transport.memory
-    import countertally.protocol.types  # noqa: F401
+    import hollowmesh.protocol.fake
+    import hollowmesh.protocol.node
+    import hollowmesh.protocol.record
+    import hollowmesh.protocol.sync
+    import hollowmesh.protocol.transport.memory
+    import hollowmesh.protocol.types  # noqa: F401

@@ -1,3 +1,3 @@
-"""`make demo` / `python -m countertally.sim` — Track B entry point."""
+"""`make demo` / `python -m hollowmesh.sim` — Track B entry point."""
 
 raise SystemExit("sim not implemented yet (B3/B5)")

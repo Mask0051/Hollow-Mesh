@@ -1,4 +1,4 @@
-"""M9 — Run one node over HTTP: `python -m countertally.nodeapp`. Used for the real-laptop demo."""
+"""M9 — Run one node over HTTP: `python -m hollowmesh.nodeapp`. Used for the real-laptop demo."""
 
 
 def main() -> None:

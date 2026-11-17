@@ -14,11 +14,11 @@ chaos:
 
 # M5: run the sim on real nodes
 demo:
-	$(PY) -m countertally.sim
+	$(PY) -m hollowmesh.sim
 
 # M9: a single node over HTTP
 node:
-	$(PY) -m countertally.nodeapp
+	$(PY) -m hollowmesh.nodeapp
 
 lint:
 	$(PY) -m ruff check src tests

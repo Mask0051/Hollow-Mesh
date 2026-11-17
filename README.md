@@ -10,10 +10,10 @@ compare them with the Directorate's official numbers.
 
 | Path | Owner | What |
 |---|---|---|
-| `src/countertally/protocol/` | MK | Records, signing, node ingest, gossip sync, transports |
-| `src/countertally/nodeapp.py` | MK | Runs one node over HTTP (M9) |
-| `src/countertally/sim/` | MN + MP | The simulated Hollow: residents, stairwells, Directorate attacks |
-| `src/countertally/services/` | MN + MP | Countertally and other services |
+| `src/hollowmesh/protocol/` | MK | Records, signing, node ingest, gossip sync, transports |
+| `src/hollowmesh/nodeapp.py` | MK | Runs one node over HTTP (M9) |
+| `src/hollowmesh/sim/` | MN + MP | The simulated Hollow: residents, stairwells, Directorate attacks |
+| `src/hollowmesh/services/` | MN + MP | Countertally and other services |
 | `spec/` | all | `world.json` (B1); event spec |
 | `fixtures/`, `tools/` | MN + MP | Replay fixture + `replay_ws.py` (B2) |
 | `web/` | MP | Vite + React dashboard (C1+) |
@@ -34,5 +34,5 @@ pip install -e ".[dev,http,sim]"
 |---|---|
 | `make test` | `python -m pytest` |
 | `make chaos` | `python -m pytest -m chaos` |
-| `make demo` | `python -m countertally.sim` |
-| `make node` | `python -m countertally.nodeapp` |
+| `make demo` | `python -m hollowmesh.sim` |
+| `make node` | `python -m hollowmesh.nodeapp` |
