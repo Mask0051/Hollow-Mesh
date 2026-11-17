@@ -15,7 +15,7 @@ from typing import Any
 @dataclass(frozen=True)
 class Keypair:
     """An ed25519 identity. `public` (hex) is the author id."""
-
+    
     secret: bytes
     public: str
 
