@@ -1,4 +1,8 @@
-"""M5 — MemoryTransport: in-process delivery, with links the sim can cut/heal. Due Tue 9:30 PM."""
+"""P5 — MemoryTransport: in-process delivery for the sim (Doc 2 §1.4). Due Wed 4 PM.
+
+Holds a ref to the sim's network and calls the peer node's sync handler directly.
+Reachability comes only from the sim (world.reachability()); this class never decides it.
+"""
 
 from __future__ import annotations
 
@@ -6,17 +10,14 @@ from typing import Any
 
 
 class MemoryTransport:
-    def __init__(self) -> None:
-        self.links: set[frozenset[str]] = set()
+    def __init__(self, node_id: str, network: Any) -> None:
+        raise NotImplementedError("P5")
 
-    def connect(self, a: str, b: str) -> None:
-        raise NotImplementedError("M5")
+    def reachable(self) -> list[str]:
+        raise NotImplementedError("P5")
 
-    def cut(self, a: str, b: str) -> None:
-        raise NotImplementedError("M5")
+    def sync(self, peer: str, req: dict[str, Any]) -> dict[str, Any]:
+        raise NotImplementedError("P5")
 
-    def send(self, src: str, dst: str, msg: dict[str, Any]) -> None:
-        raise NotImplementedError("M5")
-
-    def reachable(self, src: str) -> list[str]:
-        raise NotImplementedError("M5")
+    def push(self, peer: str, msg: dict[str, Any]) -> dict[str, Any]:
+        raise NotImplementedError("P5")
