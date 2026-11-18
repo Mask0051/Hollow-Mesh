@@ -1,1 +1,4 @@
-"""M9 — HTTP transport: the same sync messages as POST /sync between real machines. Wed."""
+"""P11 — HttpTransport: httpx.Client, POST {addr}/sync and {addr}/records, timeout 3 s.
+
+Used for the real-laptop segment (2 laptops on one hotspot). Due Thu 6 PM. Doc 2 §1.4–1.5.
+"""

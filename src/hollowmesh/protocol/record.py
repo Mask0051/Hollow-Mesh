@@ -1,4 +1,4 @@
-"""M1 — Record format: canonical JSON, sha256 id, ed25519 sign/verify.
+"""P1 — Record format: canonical JSON, sha256 id, ed25519 sign/verify.
 
 A record is one entry in an author's append-only feed. Each record links to the
 previous one by hash (`prev`), so a feed is a hash chain signed by its author.

@@ -8,15 +8,15 @@ install:
 test:
 	$(PY) -m pytest
 
-# M7: 200 random partition/crash schedules must converge
+# P10: 100 random partition/crash schedules must converge
 chaos:
 	$(PY) -m pytest -m chaos
 
-# M5: run the sim on real nodes
+# P6: run the sim on real nodes
 demo:
 	$(PY) -m hollowmesh.sim
 
-# M9: a single node over HTTP
+# P11: a single node over HTTP
 node:
 	$(PY) -m hollowmesh.nodeapp
 

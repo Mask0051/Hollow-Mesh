@@ -10,13 +10,12 @@ compare them with the Directorate's official numbers.
 
 | Path | Owner | What |
 |---|---|---|
-| `src/hollowmesh/protocol/` | MK | Records, signing, node ingest, gossip sync, transports |
-| `src/hollowmesh/nodeapp.py` | MK | Runs one node over HTTP (M9) |
-| `src/hollowmesh/sim/` | MN + MP | The simulated Hollow: residents, stairwells, Directorate attacks |
-| `src/hollowmesh/services/` | MN + MP | Countertally and other services |
-| `spec/` | all | `world.json` (B1); event spec |
-| `fixtures/`, `tools/` | MN + MP | Replay fixture + `replay_ws.py` (B2) |
-| `web/` | MP | Vite + React dashboard (C1+) |
+| `src/hollowmesh/protocol/` | MK | Records, signing, node ingest, gossip sync, transports (P1–P7) |
+| `src/hollowmesh/services/` | MK | Countertally and other services (P8) |
+| `src/hollowmesh/nodeapp.py` | MK | Runs one node over HTTP for the real-laptop segment (P11) |
+| `src/hollowmesh/sim/` | Teammate | The simulated Hollow: residents, stairwells, Directorate attacks (H2–H10) |
+| `spec/` | all | `world.json` (H2); frozen copy of the spec (Doc 2 §1) |
+| `web/` | Teammate | Vite + React dashboard (H3, H6–H9) |
 | `tests/` | all | pytest + Hypothesis |
 | `Docs/` | all | Planning docs |
 
