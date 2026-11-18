@@ -1,17 +1,17 @@
 """P3 — Node: ingest pipeline and feed storage (Doc 2 §1.3).
 
 Node.ingest(record, from_peer):
-  1. Parse + size + schema: 2 KB cap; payload validated by the type's pydantic model
-     (types.py). On failure, reject with a reason.
-  2. Signature: verify with the author's key. On failure, reject, write a tamper
-     evidence row naming `from_peer`, give that peer a strike, fire on_event.
-  3. Dedupe: id already held -> drop silently.
-  4. Chain check:
-     - seq == head+1 and prev == head_id -> append, then drain that author's pending.
-     - seq == head+1 but prev != head_id -> suspected fork: hold in pending.
-     - seq > head+1                      -> gap: hold in pending, status 'gapped',
+    1. Parse + size + schema: 2 KB cap; payload validated by the type's pydantic model
+        (types.py). On failure, reject with a reason.
+    2. Signature: verify with the author's key. On failure, reject, write a tamper
+        evidence row naming `from_peer`, give that peer a strike, fire on_event.
+    3. Dedupe: id already held -> drop silently.
+    4. Chain check:
+        - seq == head+1 and prev == head_id -> append, then drain that author's pending.
+        - seq == head+1 but prev != head_id -> suspected fork: hold in pending.
+        - seq > head+1                      -> gap: hold in pending, status 'gapped',
                                             fire on_event.
-     - seq <= head with a different id   -> fork (P13, stretch).
+        - seq <= head with a different id   -> fork (P13, stretch).
 
 Validity must be deterministic: it depends only on the record and its chain, never
 on the local clock or on which peer sent it.
@@ -155,7 +155,7 @@ class Node:
         if result is not IngestResult.ACCEPTED:
             raise RuntimeError(f"own record rejected by ingest (bug?): {result}")  # a bug if hit
 
-        # 7. P5 adds: push to up to 3 reachable peers.
+        # 7. Push-on-publish lives in sync.Gossiper.publish, which calls this.
         return record
 
     def ingest(self, record: Mapping[str, Any], from_peer: str | None = None) -> IngestResult:
