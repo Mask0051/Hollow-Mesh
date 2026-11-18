@@ -9,6 +9,7 @@ from hollowmesh.protocol.record import (
     MAX_SAFE_INT,
     Keypair,
     canonical_json,
+    check_record,
     record_id,
     sign_record,
     verify_record,
@@ -26,7 +27,8 @@ def keys() -> Keypair:
 def make(keys: Keypair, **overrides: Any) -> dict[str, Any]:
     args: dict[str, Any] = dict(seq=1, prev=None, type="note", payload={"msg": "hi"}, ts=1_000)
     args.update(overrides)
-    return sign_record(keys, **args)
+    # plain dict copy: tamper tests overwrite arbitrary fields, which a Record type forbids
+    return dict(sign_record(keys, **args))
 
 
 # --- Keypair ---------------------------------------------------------------
@@ -268,3 +270,34 @@ def test_verify_returns_false_on_malformed_never_raises(keys, mutate):
 @pytest.mark.parametrize("bad", [None, [], "record", 42])
 def test_verify_non_dict_is_false(bad):
     assert verify_record(bad) is False
+
+
+# --- check_record: why a record fails (Node uses this to pick INVALID vs TAMPERED) ---
+
+
+def test_check_record_valid_is_none(keys):
+    assert check_record(make(keys)) is None
+
+
+def test_check_record_malformed(keys):
+    r = make(keys)
+    r.pop("sig")
+    assert check_record(r) == "malformed"
+    assert check_record(None) == "malformed"
+    assert check_record({**make(keys), "payload": {"x": 0.5}}) == "malformed"
+
+
+def test_check_record_bad_id(keys):
+    r = make(keys)
+    r["payload"] = {"msg": "bye"}  # content changed, claimed id kept
+    assert check_record(r) == "bad_id"
+
+
+def test_check_record_bad_sig(keys):
+    r = make(keys)
+    r["payload"] = {"msg": "bye"}
+    r["id"] = record_id(r)  # id fixed up, but the signature can't be
+    assert check_record(r) == "bad_sig"
+    r2 = make(keys)
+    r2["sig"] = "00" * 64
+    assert check_record(r2) == "bad_sig"

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..sync import PushRecords, PushResult, SyncRequest, SyncResponse
+
 
 class MemoryTransport:
     def __init__(self, node_id: str, network: Any) -> None:
@@ -16,8 +18,8 @@ class MemoryTransport:
     def reachable(self) -> list[str]:
         raise NotImplementedError("P5")
 
-    def sync(self, peer: str, req: dict[str, Any]) -> dict[str, Any]:
+    def sync(self, peer: str, req: SyncRequest) -> SyncResponse:
         raise NotImplementedError("P5")
 
-    def push(self, peer: str, msg: dict[str, Any]) -> dict[str, Any]:
+    def push(self, peer: str, msg: PushRecords) -> PushResult:
         raise NotImplementedError("P5")

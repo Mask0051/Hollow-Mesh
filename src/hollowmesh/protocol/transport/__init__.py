@@ -5,7 +5,9 @@ Node logic never knows which one is in use. One transport instance per node.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
+
+from ..sync import PushRecords, PushResult, SyncRequest, SyncResponse
 
 
 class Transport(Protocol):
@@ -13,10 +15,10 @@ class Transport(Protocol):
         """Peer node_ids this node can reach right now (the sim controls this in memory)."""
         ...
 
-    def sync(self, peer: str, req: dict[str, Any]) -> dict[str, Any]:
+    def sync(self, peer: str, req: SyncRequest) -> SyncResponse:
         """Send a SyncRequest to `peer`, get its SyncResponse."""
         ...
 
-    def push(self, peer: str, msg: dict[str, Any]) -> dict[str, Any]:
+    def push(self, peer: str, msg: PushRecords) -> PushResult:
         """Send PushRecords to `peer`, get {accepted, pending, rejected}."""
         ...
