@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TypedDict, cast
 
 import nacl.utils
 from nacl.exceptions import CryptoError
@@ -24,6 +25,24 @@ MAX_RECORD_BYTES = 2048
 MAX_SAFE_INT = 2**53 - 1
 _HEX = set("0123456789abcdef")
 _RECORD_KEYS = {"v", "author", "seq", "prev", "type", "ts", "payload", "id", "sig"}
+
+
+class Record(TypedDict):
+    """A signed record (Doc 2 §1.1). At runtime it's a plain dict: same JSON, same bytes.
+
+    Use it for records we produced or verified. Input from peers is untrusted and
+    stays `Mapping[str, Any]` until it's checked.
+    """
+
+    v: int  # format version
+    author: str  # ed25519 public key, 64 hex
+    seq: int  # 1-based, +1 per record, per author
+    prev: str | None  # id of record seq-1; None only when seq == 1
+    type: str  # record type, e.g. "post"
+    ts: int  # author's claimed clock, int ms (informational only)
+    payload: dict[str, Any]  # type-specific, validated by types.PAYLOAD_SCHEMAS
+    id: str  # sha256 hex of the signing bytes
+    sig: str  # ed25519 signature over the signing bytes, 128 hex
 
 
 @dataclass(frozen=True)
@@ -76,7 +95,7 @@ def canonical_json(obj: Any) -> bytes:
         obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
     ).encode("utf-8")
 
-def record_id(unsigned: dict[str, Any]) -> str:
+def record_id(unsigned: Mapping[str, Any]) -> str:
     """sha256 hex of canonical_json(the record without `id` and `sig`)."""
     #remove id and sig if already in json
     unsigned_trimmed = {k: v for k,v in unsigned.items() if k not in ("id", "sig")}
@@ -111,7 +130,7 @@ def _check_fields(*, seq: Any, prev: Any, type: Any, ts: Any, payload: Any) -> N
 
 def sign_record(
     keys: Keypair, *, seq: int, prev: str | None, type: str, payload: dict[str, Any], ts: int
-) -> dict[str, Any]:
+) -> Record:
     """Build, hash and sign a record. Returns the full record with `id` and `sig`."""
 
     #1. field checks
@@ -138,10 +157,10 @@ def sign_record(
 
     # 5. Signature over the same bytes (.signature = just the 64-byte sig, not sig+message)
     sig = SigningKey(keys.secret).sign(signing_bytes).signature.hex()
-    return {**unsigned, "id": rid, "sig": sig}
+    return cast(Record, {**unsigned, "id": rid, "sig": sig})
 
 
-def verify_record(record: dict[str, Any]) -> bool:
+def verify_record(record: Mapping[str, Any]) -> bool:
     """True if `id` matches the content and `sig` is a valid signature by `author`.
 
     Records arrive from untrusted peers, so this never raises: anything malformed is False.

@@ -8,10 +8,11 @@ real node's and the sim's sync loop doesn't change when Node swaps in (P6).
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, cast
 
 from .node import EventHook, IngestResult, VersionVector
-from .record import Keypair, sign_record
+from .record import Keypair, Record, sign_record
 
 
 class FakeNode:
@@ -31,7 +32,7 @@ class FakeNode:
             self._keys["private"] = private_keys
 
         # Every record this node holds (its own and received): id -> record
-        self._records: dict[str, dict[str, Any]] = {}
+        self._records: dict[str, Record] = {}
 
         # Per author: seq -> id, for every seq held (including ones past a gap)
         self._seqs: dict[str, dict[int, str]] = {}
@@ -46,7 +47,7 @@ class FakeNode:
         self._on_event: EventHook = on_event or (lambda event: None)
 
     def publish(self, *, type: str, payload: dict[str, Any], now_ms: int,
-                identity: str = "public") -> dict[str, Any]:
+                identity: str = "public") -> Record:
         """Append a new signed record to one of this node's own feeds."""
 
         keys = self._keys.get(identity)
@@ -68,7 +69,7 @@ class FakeNode:
         self._store(record)
         return record
 
-    def ingest(self, record: dict[str, Any], from_peer: str | None = None) -> IngestResult:
+    def ingest(self, record: Mapping[str, Any], from_peer: str | None = None) -> IngestResult:
         """Store a peer's record. Trusts it: only dedupe and gap bookkeeping.
 
         `from_peer` is unused here; the real node uses it for tamper evidence + strikes.
@@ -80,7 +81,7 @@ class FakeNode:
         if rid in self._records:
             return IngestResult.DUPLICATE
 
-        self._store(record)
+        self._store(cast(Record, record))  # trusted: FakeNode skips verification
         # Past the contiguous prefix -> the real node would hold it in `pending`
         if record["seq"] > self._vv.get(record["author"], 0):
             return IngestResult.GAP
@@ -89,22 +90,22 @@ class FakeNode:
     def version_vector(self) -> VersionVector:
         return dict(self._vv)
 
-    def records_since(self, theirs: VersionVector) -> list[dict[str, Any]]:
+    def records_since(self, theirs: VersionVector) -> list[Record]:
         """What a peer with `theirs` lacks: seqs theirs[a]+1 .. ours[a], per author.
 
         Like the real node, records past a gap are not forwarded until it fills.
         """
-        out: list[dict[str, Any]] = []
+        out: list[Record] = []
         for author in sorted(self._vv):
             seqs = self._seqs[author]
             for seq in range(theirs.get(author, 0) + 1, self._vv[author] + 1):
                 out.append(self._records[seqs[seq]])
         return out
 
-    def all_records(self) -> list[dict[str, Any]]:
+    def all_records(self) -> list[Record]:
         return sorted(self._records.values(), key=lambda r: (r["author"], r["seq"]))
 
-    def _store(self, record: dict[str, Any]) -> None:
+    def _store(self, record: Record) -> None:
         """Index a record and advance the author's contiguous seq and head."""
         author, seq = record["author"], record["seq"]
         self._records[record["id"]] = record

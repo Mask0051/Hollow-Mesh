@@ -26,7 +26,8 @@ def keys() -> Keypair:
 def make(keys: Keypair, **overrides: Any) -> dict[str, Any]:
     args: dict[str, Any] = dict(seq=1, prev=None, type="note", payload={"msg": "hi"}, ts=1_000)
     args.update(overrides)
-    return sign_record(keys, **args)
+    # plain dict copy: tamper tests overwrite arbitrary fields, which a Record type forbids
+    return dict(sign_record(keys, **args))
 
 
 # --- Keypair ---------------------------------------------------------------

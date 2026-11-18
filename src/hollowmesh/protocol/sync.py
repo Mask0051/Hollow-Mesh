@@ -20,12 +20,36 @@ Write the version-vector merge tests yourself first (Doc 4 §2).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TypedDict
 
-from .node import Node
+from .node import Node, VersionVector
+from .record import Record
+
+# Sync messages (Doc 2 §1.4). Functional TypedDict syntax because `from` is a Python
+# keyword and can't be a class attribute. At runtime these are plain dicts / JSON.
+SyncRequest = TypedDict("SyncRequest", {"from": str, "vv": VersionVector, "limit": int})
+SyncResponse = TypedDict(
+    "SyncResponse", {"from": str, "vv": VersionVector, "records": list[Record], "more": bool}
+)
+PushRecords = TypedDict("PushRecords", {"from": str, "records": list[Record]})
 
 
-def handle_message(node: Node, msg: dict[str, Any]) -> dict[str, Any] | None:
+class Rejected(TypedDict):
+    id: str
+    reason: str
+
+
+class PushResult(TypedDict):
+    """Reply to PushRecords (same shape as POST /records, Doc 2 §1.5)."""
+
+    accepted: int
+    pending: int
+    rejected: list[Rejected]
+
+
+def handle_message(
+    node: Node, msg: SyncRequest | PushRecords
+) -> SyncResponse | PushResult | None:
     """Apply an incoming sync message; return a reply message if one is needed."""
     raise NotImplementedError("P5")
 
