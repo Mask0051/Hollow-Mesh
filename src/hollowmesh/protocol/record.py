@@ -12,7 +12,7 @@ import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 import nacl.utils
 from nacl.exceptions import CryptoError
@@ -160,23 +160,28 @@ def sign_record(
     return cast(Record, {**unsigned, "id": rid, "sig": sig})
 
 
-def verify_record(record: Mapping[str, Any]) -> bool:
-    """True if `id` matches the content and `sig` is a valid signature by `author`.
+RecordProblem = Literal["malformed", "bad_id", "bad_sig"]
 
-    Records arrive from untrusted peers, so this never raises: anything malformed is False.
+
+def check_record(record: Any) -> RecordProblem | None:
+    """Why a record is invalid, or None if it's valid. Never raises.
+
+    "malformed": wrong shape, bad field, too big -> not even a record (INVALID).
+    "bad_id":    well-formed, but the content doesn't hash to `id` -> altered (TAMPERED).
+    "bad_sig":   well-formed, id matches, but the author didn't sign it (TAMPERED).
     """
+    #1. exact envelope: no missing or extra fields, known version
     try:
-        #1. exact envelope: no missing or extra fields, known version
         if not isinstance(record, dict) or set(record) != _RECORD_KEYS:
-            return False
+            return "malformed"
         if record["v"] != FORMAT_VERSION or isinstance(record["v"], bool):
-            return False
+            return "malformed"
         if not (
             _is_hex(record["author"], 64)
             and _is_hex(record["id"], 64)
             and _is_hex(record["sig"], 128)
         ):
-            return False
+            return "malformed"
         _check_fields(
             seq=record["seq"],
             prev=record["prev"],
@@ -189,18 +194,29 @@ def verify_record(record: Mapping[str, Any]) -> bool:
         unsigned = {k: v for k, v in record.items() if k not in ("id", "sig")}
         signing_bytes = canonical_json(unsigned)
         if len(signing_bytes) > MAX_RECORD_BYTES:
-            return False
+            return "malformed"
+    except (ValueError, TypeError, RecursionError):
+        # ValueError: _check_fields / canonical_json; TypeError: unserializable payload
+        return "malformed"
 
-        #3. id must be the hash of those bytes
-        if hashlib.sha256(signing_bytes).hexdigest() != record["id"]:
-            return False
+    #3. id must be the hash of those bytes
+    if hashlib.sha256(signing_bytes).hexdigest() != record["id"]:
+        return "bad_id"
 
-        #4. sig must be the author's signature over those same bytes
+    #4. sig must be the author's signature over those same bytes
+    try:
         VerifyKey(bytes.fromhex(record["author"])).verify(
             signing_bytes, bytes.fromhex(record["sig"])
         )
-        return True
-    except (ValueError, TypeError,RecursionError, CryptoError):
-        # ValueError: _check_fields / canonical_json; TypeError: unserializable payload;
+    except (ValueError, CryptoError):
         # CryptoError: bad signature (BadSignatureError) or an invalid public key
-        return False
+        return "bad_sig"
+    return None
+
+
+def verify_record(record: Mapping[str, Any]) -> bool:
+    """True if `id` matches the content and `sig` is a valid signature by `author`.
+
+    Records arrive from untrusted peers, so this never raises: anything malformed is False.
+    """
+    return check_record(record) is None
