@@ -1,0 +1,606 @@
+{
+ "levels": 4,
+ "sectors": [
+  {
+   "id": "L0-S00",
+   "level": 0,
+   "x": 0.0702,
+   "y": 0.14,
+   "w": 0.0963,
+   "name": "Vault Door"
+  },
+  {
+   "id": "L0-S01",
+   "level": 0,
+   "x": 0.17,
+   "y": 0.14,
+   "w": 0.0913,
+   "name": "Airlock"
+  },
+  {
+   "id": "L0-S02",
+   "level": 0,
+   "x": 0.2585,
+   "y": 0.14,
+   "w": 0.0737,
+   "name": "Security"
+  },
+  {
+   "id": "L0-S03",
+   "level": 0,
+   "x": 0.3395,
+   "y": 0.14,
+   "w": 0.0763,
+   "name": "Armory"
+  },
+  {
+   "id": "L0-S04",
+   "level": 0,
+   "x": 0.4153,
+   "y": 0.14,
+   "w": 0.0633,
+   "name": "Guard Post"
+  },
+  {
+   "id": "L0-S05",
+   "level": 0,
+   "x": 0.5,
+   "y": 0.14,
+   "w": 0.094,
+   "name": "Overseer"
+  },
+  {
+   "id": "L0-S06",
+   "level": 0,
+   "x": 0.5977,
+   "y": 0.14,
+   "w": 0.0894,
+   "name": "Comms"
+  },
+  {
+   "id": "L0-S07",
+   "level": 0,
+   "x": 0.6954,
+   "y": 0.14,
+   "w": 0.094,
+   "name": "Lobby"
+  },
+  {
+   "id": "L0-S08",
+   "level": 0,
+   "x": 0.8,
+   "y": 0.14,
+   "w": 0.1031,
+   "name": "Archive"
+  },
+  {
+   "id": "L0-S09",
+   "level": 0,
+   "x": 0.9178,
+   "y": 0.14,
+   "w": 0.1204,
+   "name": "Exit Tunnel"
+  },
+  {
+   "id": "L1-S00",
+   "level": 1,
+   "x": 0.0724,
+   "y": 0.38,
+   "w": 0.1008,
+   "name": "Dorm A"
+  },
+  {
+   "id": "L1-S01",
+   "level": 1,
+   "x": 0.17,
+   "y": 0.38,
+   "w": 0.0824,
+   "name": "Stair Hall"
+  },
+  {
+   "id": "L1-S02",
+   "level": 1,
+   "x": 0.2559,
+   "y": 0.38,
+   "w": 0.0775,
+   "name": "Mess Hall"
+  },
+  {
+   "id": "L1-S03",
+   "level": 1,
+   "x": 0.3292,
+   "y": 0.38,
+   "w": 0.057,
+   "name": "Kitchen"
+  },
+  {
+   "id": "L1-S04",
+   "level": 1,
+   "x": 0.4069,
+   "y": 0.38,
+   "w": 0.0865,
+   "name": "Clinic"
+  },
+  {
+   "id": "L1-S05",
+   "level": 1,
+   "x": 0.5,
+   "y": 0.38,
+   "w": 0.0876,
+   "name": "Rec Room"
+  },
+  {
+   "id": "L1-S06",
+   "level": 1,
+   "x": 0.602,
+   "y": 0.38,
+   "w": 0.1045,
+   "name": "Dorm B"
+  },
+  {
+   "id": "L1-S07",
+   "level": 1,
+   "x": 0.7066,
+   "y": 0.38,
+   "w": 0.0926,
+   "name": "Laundry"
+  },
+  {
+   "id": "L1-S08",
+   "level": 1,
+   "x": 0.8,
+   "y": 0.38,
+   "w": 0.0823,
+   "name": "Dorm C"
+  },
+  {
+   "id": "L1-S09",
+   "level": 1,
+   "x": 0.9126,
+   "y": 0.38,
+   "w": 0.1309,
+   "name": "Storage"
+  },
+  {
+   "id": "L2-S00",
+   "level": 2,
+   "x": 0.072,
+   "y": 0.62,
+   "w": 0.1,
+   "name": "Hydroponics"
+  },
+  {
+   "id": "L2-S01",
+   "level": 2,
+   "x": 0.17,
+   "y": 0.62,
+   "w": 0.0839,
+   "name": "Pump Hall"
+  },
+  {
+   "id": "L2-S02",
+   "level": 2,
+   "x": 0.256,
+   "y": 0.62,
+   "w": 0.076,
+   "name": "Workshop"
+  },
+  {
+   "id": "L2-S03",
+   "level": 2,
+   "x": 0.339,
+   "y": 0.62,
+   "w": 0.078,
+   "name": "Garden A"
+  },
+  {
+   "id": "L2-S04",
+   "level": 2,
+   "x": 0.4189,
+   "y": 0.62,
+   "w": 0.0698,
+   "name": "Garden B"
+  },
+  {
+   "id": "L2-S05",
+   "level": 2,
+   "x": 0.5,
+   "y": 0.62,
+   "w": 0.0804,
+   "name": "Seed Bank"
+  },
+  {
+   "id": "L2-S06",
+   "level": 2,
+   "x": 0.5952,
+   "y": 0.62,
+   "w": 0.0981,
+   "name": "Forge"
+  },
+  {
+   "id": "L2-S07",
+   "level": 2,
+   "x": 0.6988,
+   "y": 0.62,
+   "w": 0.0971,
+   "name": "Garden C"
+  },
+  {
+   "id": "L2-S08",
+   "level": 2,
+   "x": 0.8,
+   "y": 0.62,
+   "w": 0.0932,
+   "name": "Recycler"
+  },
+  {
+   "id": "L2-S09",
+   "level": 2,
+   "x": 0.9153,
+   "y": 0.62,
+   "w": 0.1254,
+   "name": "Tool Room"
+  },
+  {
+   "id": "L3-S00",
+   "level": 3,
+   "x": 0.0698,
+   "y": 0.86,
+   "w": 0.0955,
+   "name": "Reactor"
+  },
+  {
+   "id": "L3-S01",
+   "level": 3,
+   "x": 0.17,
+   "y": 0.86,
+   "w": 0.093,
+   "name": "Coolant"
+  },
+  {
+   "id": "L3-S02",
+   "level": 3,
+   "x": 0.2559,
+   "y": 0.86,
+   "w": 0.0669,
+   "name": "Pump Room"
+  },
+  {
+   "id": "L3-S03",
+   "level": 3,
+   "x": 0.3262,
+   "y": 0.86,
+   "w": 0.0615,
+   "name": "Generators"
+  },
+  {
+   "id": "L3-S04",
+   "level": 3,
+   "x": 0.4045,
+   "y": 0.86,
+   "w": 0.0831,
+   "name": "Mine Shaft"
+  },
+  {
+   "id": "L3-S05",
+   "level": 3,
+   "x": 0.5,
+   "y": 0.86,
+   "w": 0.096,
+   "name": "Ore Store"
+  },
+  {
+   "id": "L3-S06",
+   "level": 3,
+   "x": 0.6023,
+   "y": 0.86,
+   "w": 0.0966,
+   "name": "Control"
+  },
+  {
+   "id": "L3-S07",
+   "level": 3,
+   "x": 0.7022,
+   "y": 0.86,
+   "w": 0.0912,
+   "name": "Boiler"
+  },
+  {
+   "id": "L3-S08",
+   "level": 3,
+   "x": 0.8,
+   "y": 0.86,
+   "w": 0.0925,
+   "name": "Waste Tank"
+  },
+  {
+   "id": "L3-S09",
+   "level": 3,
+   "x": 0.9151,
+   "y": 0.86,
+   "w": 0.1258,
+   "name": "Vent Hub"
+  }
+ ],
+ "edges": [
+  {
+   "id": "T-L0-S00-L0-S01",
+   "a": "L0-S00",
+   "b": "L0-S01",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L0-S01-L0-S02",
+   "a": "L0-S01",
+   "b": "L0-S02",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L0-S02-L0-S03",
+   "a": "L0-S02",
+   "b": "L0-S03",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L0-S03-L0-S04",
+   "a": "L0-S03",
+   "b": "L0-S04",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L0-S04-L0-S05",
+   "a": "L0-S04",
+   "b": "L0-S05",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L0-S05-L0-S06",
+   "a": "L0-S05",
+   "b": "L0-S06",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L0-S06-L0-S07",
+   "a": "L0-S06",
+   "b": "L0-S07",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L0-S07-L0-S08",
+   "a": "L0-S07",
+   "b": "L0-S08",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L0-S08-L0-S09",
+   "a": "L0-S08",
+   "b": "L0-S09",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S00-L1-S01",
+   "a": "L1-S00",
+   "b": "L1-S01",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S01-L1-S02",
+   "a": "L1-S01",
+   "b": "L1-S02",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S02-L1-S03",
+   "a": "L1-S02",
+   "b": "L1-S03",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S03-L1-S04",
+   "a": "L1-S03",
+   "b": "L1-S04",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S04-L1-S05",
+   "a": "L1-S04",
+   "b": "L1-S05",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S05-L1-S06",
+   "a": "L1-S05",
+   "b": "L1-S06",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S06-L1-S07",
+   "a": "L1-S06",
+   "b": "L1-S07",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S07-L1-S08",
+   "a": "L1-S07",
+   "b": "L1-S08",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L1-S08-L1-S09",
+   "a": "L1-S08",
+   "b": "L1-S09",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S00-L2-S01",
+   "a": "L2-S00",
+   "b": "L2-S01",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S01-L2-S02",
+   "a": "L2-S01",
+   "b": "L2-S02",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S02-L2-S03",
+   "a": "L2-S02",
+   "b": "L2-S03",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S03-L2-S04",
+   "a": "L2-S03",
+   "b": "L2-S04",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S04-L2-S05",
+   "a": "L2-S04",
+   "b": "L2-S05",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S05-L2-S06",
+   "a": "L2-S05",
+   "b": "L2-S06",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S06-L2-S07",
+   "a": "L2-S06",
+   "b": "L2-S07",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S07-L2-S08",
+   "a": "L2-S07",
+   "b": "L2-S08",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L2-S08-L2-S09",
+   "a": "L2-S08",
+   "b": "L2-S09",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S00-L3-S01",
+   "a": "L3-S00",
+   "b": "L3-S01",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S01-L3-S02",
+   "a": "L3-S01",
+   "b": "L3-S02",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S02-L3-S03",
+   "a": "L3-S02",
+   "b": "L3-S03",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S03-L3-S04",
+   "a": "L3-S03",
+   "b": "L3-S04",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S04-L3-S05",
+   "a": "L3-S04",
+   "b": "L3-S05",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S05-L3-S06",
+   "a": "L3-S05",
+   "b": "L3-S06",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S06-L3-S07",
+   "a": "L3-S06",
+   "b": "L3-S07",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S07-L3-S08",
+   "a": "L3-S07",
+   "b": "L3-S08",
+   "kind": "tunnel"
+  },
+  {
+   "id": "T-L3-S08-L3-S09",
+   "a": "L3-S08",
+   "b": "L3-S09",
+   "kind": "tunnel"
+  },
+  {
+   "id": "ST-0-1-a",
+   "a": "L0-S01",
+   "b": "L1-S01",
+   "kind": "stairwell",
+   "dir": 1
+  },
+  {
+   "id": "ST-0-1-b",
+   "a": "L0-S05",
+   "b": "L1-S05",
+   "kind": "stairwell",
+   "dir": -1
+  },
+  {
+   "id": "ST-0-1-c",
+   "a": "L0-S08",
+   "b": "L1-S08",
+   "kind": "stairwell",
+   "dir": 1
+  },
+  {
+   "id": "ST-1-2-a",
+   "a": "L1-S01",
+   "b": "L2-S01",
+   "kind": "stairwell",
+   "dir": 1
+  },
+  {
+   "id": "ST-1-2-b",
+   "a": "L1-S05",
+   "b": "L2-S05",
+   "kind": "stairwell",
+   "dir": -1
+  },
+  {
+   "id": "ST-1-2-c",
+   "a": "L1-S08",
+   "b": "L2-S08",
+   "kind": "stairwell",
+   "dir": 1
+  },
+  {
+   "id": "ST-2-3-a",
+   "a": "L2-S01",
+   "b": "L3-S01",
+   "kind": "stairwell",
+   "dir": 1
+  },
+  {
+   "id": "ST-2-3-b",
+   "a": "L2-S05",
+   "b": "L3-S05",
+   "kind": "stairwell",
+   "dir": -1
+  },
+  {
+   "id": "ST-2-3-c",
+   "a": "L2-S08",
+   "b": "L3-S08",
+   "kind": "stairwell",
+   "dir": 1
+  }
+ ]
+}

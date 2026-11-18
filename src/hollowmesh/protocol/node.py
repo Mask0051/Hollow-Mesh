@@ -24,11 +24,12 @@ FakeNode (fake.py) must expose the same public API as this class.
 
 from __future__ import annotations
 
+import bisect
 from collections.abc import Callable, Mapping
 from enum import Enum
 from typing import Any, Literal, TypedDict, cast
 
-from .record import Keypair, Record, check_record, record_id, sign_record
+from .record import Keypair, Record, RecordProblem, check_record, record_id, sign_record
 from .types import PAYLOAD_SCHEMAS
 
 VersionVector = dict[str, int]  # author -> highest contiguous seq held
@@ -70,9 +71,16 @@ class Node:
         *,
         private_keys: Keypair | None = None,
         on_event: EventHook | None = None,
+        check: Callable[[Any], RecordProblem | None] = check_record,
     ) -> None:
         """One node. Each user has a public-activity key and a private (check-in) key,
-        giving two feeds that can't be linked (Doc 2 §1.1)."""
+        giving two feeds that can't be linked (Doc 2 §1.1).
+
+        `check` is the envelope/id/signature check. The sim passes a cached version
+        (Doc 2 §1.3: 300 nodes would otherwise verify the same signature 300 times);
+        it must give exactly check_record's answer for the same record.
+        """
+        self._check = check
         # The node's id is its public key, so there is one source of truth (same as FakeNode)
         self.node_id = public_keys.public
 
@@ -89,6 +97,11 @@ class Node:
         # author -> [id of seq 1, id of seq 2, ...]. The chain in order, no holes:
         # len(list) is the head seq, list[-1] is the head id.
         self._feeds: dict[str, list[str]] = {}
+
+        # Kept in step with _feeds by _append, so sync doesn't rebuild them every call:
+        # author -> len(_feeds[author]) (the version vector), and the authors, sorted.
+        self._vv: VersionVector = {}
+        self._authors: list[str] = []
 
         # author -> {seq -> [record, ...]}. Validly signed records that can't be chained
         # yet (an earlier seq is missing). A list per seq, because two different records
@@ -164,7 +177,7 @@ class Node:
         `record` is untrusted (a Mapping, not a Record) until steps 1-2 pass.
         """
         # --- 1. Envelope, id, signature (record.py does the crypto) -------------------------
-        problem = check_record(record)
+        problem = self._check(record)
         if problem == "malformed":
             # Not even a well-formed record: wrong fields, bad hex, too big, floats...
             return IngestResult.INVALID
@@ -260,18 +273,23 @@ class Node:
 
     def version_vector(self) -> VersionVector:
         # Our feeds never have holes, so each author's count IS the highest seq held.
-        # Pending never counts. A new dict, so callers can't modify our state.
-        return {author: len(ids) for author, ids in self._feeds.items()}
+        # Pending never counts. A copy, so callers can't modify our state.
+        return dict(self._vv)
 
     def records_since(self, theirs: VersionVector) -> list[Record]:
         """Everything we hold that a peer with `theirs` is missing."""
+        # Fast path (most syncs in a settled mesh): every (author, count) we have, they
+        # have exactly. A C-level subset check instead of a Python loop over all authors.
+        if self._vv.items() <= theirs.items():
+            return []
         out: list[Record] = []
-        for author in sorted(self._feeds):  # sorted = same order on every node
+        for author in self._authors:  # sorted = same order on every node
             # They hold seqs 1..start, so they need seq start+1 onward = ids[start:].
             # max(0, ...) so a bogus negative count can't slice from the end.
             start = max(0, theirs.get(author, 0))
-            out.extend(self._records[rid] for rid in self._feeds[author][start:])
-        # Pending records are never sent. (P5 adds the 500-record / round-robin limit.)
+            if start < self._vv[author]:
+                out.extend(map(self._records.__getitem__, self._feeds[author][start:]))
+        # Pending records are never sent. (sync.batch applies the 500-record limit.)
         return out
 
     def all_records(self) -> list[Record]:
@@ -284,8 +302,13 @@ class Node:
     def _append(self, record: Record) -> None:
         # Only called after the chain check passed (seq == head+1, prev == head_id),
         # so appending keeps the list hole-free: index seq-1 holds seq.
+        author = record["author"]
         self._records[record["id"]] = record
-        self._feeds.setdefault(record["author"], []).append(record["id"])
+        if author not in self._feeds:
+            bisect.insort(self._authors, author)
+        ids = self._feeds.setdefault(author, [])
+        ids.append(record["id"])
+        self._vv[author] = len(ids)
 
     def _is_pending(self, author: str, rid: str) -> bool:
         # At most MAX_PENDING_PER_AUTHOR records to scan, so a scan is fine.

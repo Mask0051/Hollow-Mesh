@@ -1,0 +1,153 @@
+<!doctype html><meta charset="utf-8"><title>Hollow sim</title>
+<style>
+html,body{height:100%;margin:0;background:#0d0a08;color:#ddd;font:14px system-ui;overflow:hidden}
+#bar{padding:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{background:#2a2a2a;color:#eee;border:1px solid #555;padding:6px 10px;cursor:pointer}
+button.d{border-color:#c44}
+#alert{position:absolute;left:0;right:0;bottom:0;background:#a22;color:#fff;padding:8px;display:none;z-index:5}
+#wrap{position:absolute;top:56px;left:0;right:0;bottom:0}
+canvas{width:100%;height:100%;display:block}
+</style>
+<div id="bar">
+ <b>Play as the Directorate:</b>
+ <button class="d" onclick="send({cmd:'cut_network'})">Cut network</button>
+ <button class="d" onclick="send({cmd:'cut_stairwell'})">Cut a stairwell</button>
+ <button class="d" onclick="send({cmd:'blackout',level:+lvl.value})">Black out level</button>
+ <select id="lvl"><option>0<option>1<option selected>2<option>3</select>
+ <button class="d" onclick="send({cmd:'tamper'})">Lying relay</button>
+ <button onclick="send({cmd:'inject',sector:'L3-S04'})">Post from deepest level</button>
+ <button onclick="send({cmd:'heal'})">Heal all</button>
+ <span id="meter"></span>
+</div>
+<div id="wrap"><canvas id="c"></canvas></div><div id="alert"></div>
+<script>
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+let W,S,E,EA,snap,parts=[],st=null,ph=[],amp=[],alertT=0,w=0,h=0,rocks=[],STAIR={};
+const FL=.0875,RH=.205,BQ=26,SPD=4.5,STE={};           // floor offset, room height (fractions of h), stair half-width px, walk px/frame
+const ws=new WebSocket(`ws://${location.host}/ws`);
+const send=o=>ws.send(JSON.stringify(o));
+fetch('/world.json').then(r=>r.json()).then(x=>{W=x;S=x.sectors;E=x.edges;S.forEach((s,i)=>s.i=i);
+ const byId={};S.forEach(s=>byId[s.id]=s);EA=E.map(e=>[byId[e.a],byId[e.b]]);
+ E.forEach((e,i)=>{if(e.kind==='stairwell')STE[EA[i][1].level+':'+e.id.slice(-1)]=i;});});
+for(let i=0;i<260;i++)rocks.push([Math.random(),Math.random(),1+Math.random()*3,Math.random()]);
+function fit(){const d=window.devicePixelRatio||1;w=cv.clientWidth;h=cv.clientHeight;
+ cv.width=w*d;cv.height=h*d;g.setTransform(d,0,0,d,0,0);}
+addEventListener('resize',fit);fit();
+
+const T=[{s:'GATE',d:'0 m',fill:'#1b2a33',wall:'#3d5666',acc:'#6cc7e8'},
+         {s:'HOMES',d:'-40 m',fill:'#33261a',wall:'#6b4e32',acc:'#ffb347'},
+         {s:'FARMS',d:'-80 m',fill:'#1c2e1b',wall:'#3f6a3a',acc:'#7be06b'},
+         {s:'DEEP',d:'-120 m',fill:'#361a16',wall:'#7a3a30',acc:'#ff6a4d'}];
+const tgt=r=>[r[1],S[r[0]].y+FL+(r[2]-S[r[0]].y)*.12];       // feet rest on the room floor
+
+const Ls=l=>(l%2===0)?-1:1;                                  // which half of the box has the steps (flips every floor)
+function stairPath(e,i,down){
+ const[a,b]=EA[i],cx=a.x,q=BQ/w,sm=Ls(b.level),xo=cx+sm*q,xi=cx+sm*q/2,fa=a.y+FL,fb=b.y+FL;
+ return down?[[xo,fa,0],[xi,fa,2],[xi,fb,1],[xo,fb,0]]     // flag 1 = inside the box (dim), 2 = vanish here, appear at next point
+            :[[xo,fb,0],[xi,fb,2],[xi,fa,1],[xo,fa,0]];}
+
+ws.onmessage=m=>{snap=JSON.parse(m.data);if(!S)return;
+ if(!st||st.length!==snap.residents.length)st=snap.residents.map(r=>{const t=tgt(r);return{x:t[0],y:t[1],sec:r[0],path:[],inside:0}});
+ snap.residents.forEach((r,i)=>{const s=st[i];
+  if(r[0]!==s.sec){                                          // changed room: walk the stairs if levels differ
+   let done=false;
+   E.forEach((e,k)=>{if(e.kind!=='stairwell'||done)return;const[a,b]=EA[k];
+    if(a.i===s.sec&&b.i===r[0]){s.path.push(...stairPath(e,k,true));done=true;}
+    else if(b.i===s.sec&&a.i===r[0]){s.path.push(...stairPath(e,k,false));done=true;}});
+   s.path.push([...tgt(r),0]);s.sec=r[0];}});
+ for(const[a,b]of snap.messages)parts.push({a,b,t:0});
+ if(snap.alerts.length){const a=snap.alerts[0],el=document.getElementById('alert');
+  el.style.display='block';alertT=180;
+  const ev=a.evidence||{},sh=x=>(x||'?').slice(0,12);
+  el.textContent=`${a.kind.toUpperCase()}: record #${a.seq} from author ${sh(a.author)} via relay ${sh(a.peer)} — signed hash ${sh(ev.claimed_id)}…, received content hashes to ${sh(ev.computed_id)}…`;}
+ document.getElementById('meter').textContent=
+  `tick ${snap.tick} · Directorate network ${snap.net_up?'up':'CUT'} · sync ${(snap.syncPct*100).toFixed(0)}% · urgent msg reached levels: ${snap.probeLevels.join(',')||'-'}`;};
+
+function decor(L,i,x,fl,rw,on){
+ const u=rw/10,a=T[L].acc;g.globalAlpha=on?1:.35;
+ if(L===0){ if(i===0){g.strokeStyle='#8aa2b0';g.lineWidth=4;g.beginPath();g.arc(x+rw/2,fl-26,22,0,6.283);g.stroke();
+   g.lineWidth=2;g.beginPath();for(let k=0;k<6;k++){const t=k*1.047;g.moveTo(x+rw/2,fl-26);g.lineTo(x+rw/2+22*Math.cos(t),fl-26+22*Math.sin(t));}g.stroke();}
+  else if(i%2){g.fillStyle='#24323b';g.fillRect(x+u,fl-34,u*1.6,34);g.fillRect(x+u*3,fl-34,u*1.6,34);}
+  else{g.fillStyle='#0f171c';g.fillRect(x+u,fl-16,u*3,16);g.fillStyle=a;g.fillRect(x+u*1.3,fl-13,u*2.4,6);}}
+ else if(L===1){ if(i%2){g.fillStyle='#5a3f26';g.fillRect(x+u,fl-12,u*3,4);g.fillRect(x+u*1.3,fl-12,3,12);g.fillRect(x+u*3.7,fl-12,3,12);}
+  else{g.fillStyle='#6b4e32';g.fillRect(x+u,fl-10,u*3.4,10);g.fillStyle='#e8d9b5';g.fillRect(x+u*1.1,fl-14,u*.9,5);}}
+ else if(L===2){ if(i%2){g.fillStyle='#2b3a2a';g.fillRect(x+u,fl-18,u*3,18);g.strokeStyle=a;g.lineWidth=1.5;
+   g.beginPath();g.arc(x+u*2.5,fl-9,5,0,6.283);g.stroke();}
+  else{g.fillStyle='#4a3524';g.fillRect(x+u,fl-6,u*3.6,6);g.strokeStyle=a;g.lineWidth=2;g.beginPath();
+   for(let k=0;k<4;k++){g.moveTo(x+u*(1.4+k*.9),fl-6);g.lineTo(x+u*(1.4+k*.9),fl-17);}g.stroke();}}
+ else{ if(i%2){g.fillStyle=a;g.globalAlpha=on?.8:.3;g.beginPath();g.arc(x+u*2.4,fl-14,11,0,6.283);g.fill();
+   g.fillStyle='#2a1512';g.globalAlpha=on?1:.35;g.fillRect(x+u*1.2,fl-4,u*2.4,4);}
+  else{g.strokeStyle=a;g.lineWidth=3;g.beginPath();g.moveTo(x+u,fl-30);g.lineTo(x+u*5,fl-30);
+   g.moveTo(x+u,fl-22);g.lineTo(x+u*5,fl-22);g.stroke();}}
+ g.globalAlpha=1;}
+
+function half(x,top,fl,i){if(i===undefined)return;const stt=snap.edges[i],lie=snap.lying.includes(E[i].id);
+ g.fillStyle=lie?'#c06bff':stt==2?'#ff3b30':stt==1?'#e0a020':'#5fe08a';g.fillRect(x,top-4,BQ,3);
+ if(stt==2){g.strokeStyle='#ff3b30';g.lineWidth=2.5;g.beginPath();g.moveTo(x+3,top+4);g.lineTo(x+BQ-3,fl-4);
+  g.moveTo(x+BQ-3,top+4);g.lineTo(x+3,fl-4);g.stroke();}}
+
+function draw(){
+ requestAnimationFrame(draw);if(!snap||!S||!st)return;
+ if(alertT>0&&--alertT===0)document.getElementById('alert').style.display='none';
+ const X=p=>p*w,Y=p=>p*h,rh=Y(RH),dk=l=>snap.dark.includes(l);
+ g.clearRect(0,0,w,h);
+ g.fillStyle='#1c1511';g.fillRect(0,0,w,h);
+ for(const[a,b,s,c]of rocks){g.fillStyle=c>.5?'#2a201a':'#120d0a';g.fillRect(a*w,b*h,s*2,s);}
+ const top0=Y(.14)-rh/2,sky=g.createLinearGradient(0,0,0,top0);
+ sky.addColorStop(0,'#16243f');sky.addColorStop(1,'#4a6a8a');
+ g.fillStyle=sky;g.fillRect(0,0,w,top0-3);g.fillStyle='#3a2f26';g.fillRect(0,top0-3,w,3);
+ for(let l=0;l<W.levels;l++){const y=Y(.14+.24*l)-rh/2;                       // level bars + rotated labels
+  g.fillStyle=T[l].acc;g.fillRect(3,y,5,rh);g.fillRect(w-8,y,5,rh);
+  g.font='bold 10px system-ui';g.textAlign='center';
+  g.save();g.translate(17,y+rh/2);g.rotate(-Math.PI/2);g.fillText(`LEVEL ${l} · ${T[l].s}`,0,0);g.restore();
+  g.save();g.translate(w-14,y+rh/2);g.rotate(Math.PI/2);g.fillText(T[l].d,0,0);g.restore();g.textAlign='left';}
+ S.forEach((s,i)=>{const L=s.level,on=!dk(L),rw=X(s.w),x=X(s.x)-rw/2,y=Y(s.y)-rh/2,fl=Y(s.y)+rh/2-Y(.015),cx=X(s.x);
+  g.fillStyle=on?T[L].fill:'#0a0807';g.fillRect(x,y,rw,rh);
+  if(on){const gr=g.createRadialGradient(cx,y+4,2,cx,y+4,rw*.8);
+   gr.addColorStop(0,T[L].acc+'55');gr.addColorStop(1,T[L].acc+'00');g.fillStyle=gr;g.fillRect(x,y,rw,rh);
+   g.fillStyle=T[L].acc;g.fillRect(cx-8,y,16,3);}
+  g.fillStyle=T[L].wall;g.fillRect(x,fl,rw,3);
+  g.strokeStyle=T[L].wall;g.lineWidth=2;g.strokeRect(x,y,rw,rh);
+  const idx=s.i%10,isS=(idx===1||idx===5||idx===8);if(!isS)decor(L,idx,x,fl,rw,on);
+  if(isS){const k=idx===1?'a':idx===5?'b':'c',ls=Ls(L),bt=fl-rh*.5,lx=ls<0?cx-BQ:cx,ex=ls<0?cx:cx-BQ;
+   g.fillStyle=on?'#0b0908':'#050403';g.fillRect(ex,bt,BQ,fl-bt);                    // open half
+   g.fillStyle='rgba(255,255,255,.07)';g.fillRect(lx,bt,BQ,fl-bt);                    // steps half
+   g.strokeStyle=T[L].wall;g.globalAlpha=on?.85:.3;g.lineWidth=1;g.beginPath();
+   for(let yy=bt+7;yy<fl-2;yy+=7){g.moveTo(lx,yy);g.lineTo(lx+BQ,yy);}g.stroke();g.globalAlpha=1;
+   g.lineWidth=2;g.strokeRect(cx-BQ,bt,BQ*2,fl-bt);g.beginPath();g.moveTo(cx,bt);g.lineTo(cx,fl);g.stroke();
+   half(lx,bt,fl,STE[L+':'+k]);half(ex,bt,fl,STE[(L+1)+':'+k]);}
+  g.font='9px system-ui';g.fillStyle=on?T[L].acc+'cc':'#444';g.fillText(s.name.toUpperCase(),x+4,y+13,rw-8);});
+ E.forEach((e,i)=>{const[a,b]=EA[i],stt=snap.edges[i],lie=snap.lying.includes(e.id);
+  const col=lie?'#c06bff':stt==2?'#ff3b30':stt==1?'#e0a020':'#5fe08a';
+  if(e.kind==='tunnel'){const x0=X(a.x)+X(a.w)/2,x1=X(b.x)-X(b.w)/2,fl=Y(a.y)+rh/2-Y(.015);
+   g.fillStyle='#2b2520';g.fillRect(x0-1,fl-20,x1-x0+2,20);g.fillStyle=col;g.fillRect((x0+x1)/2-2,fl-17,4,5);}
+});
+ for(let l=0;l<W.levels;l++)if(dk(l)){const y=Y(.14+.24*l)-rh/2;
+  g.fillStyle='rgba(0,0,0,.78)';g.fillRect(0,y,w,rh);
+  g.fillStyle=(snap.tick%14<9)?'#ff4d3d':'#7a2a22';g.font='bold 18px system-ui';
+  g.fillText('POWER OUT — LEVEL '+l,w/2-110,y+rh/2);}
+ for(const s of st){s.inside=0;if(s.hide>0){s.hide--;s.mv=false;continue;}
+  const p=s.path[0];s.mv=false;if(!p)continue;s.inside=p[2]>0?1:0;               // walk along waypoints
+  const dx=(p[0]-s.x)*w,dy=(p[1]-s.y)*h,dd=Math.hypot(dx,dy);
+  if(dd<=SPD){s.x=p[0];s.y=p[1];s.path.shift();
+   if(p[2]===2){const n=s.path.shift();if(n){s.x=n[0];s.y=n[1];}s.hide=4;}}else{s.x+=dx/dd*SPD/w;s.y+=dy/dd*SPD/h;}
+  s.mv=true;}
+ const sz=Math.max(12,Math.min(26,h/30)),R=sz*.14;
+ st.forEach((s,i)=>{ph[i]=(ph[i]||0)+(s.mv?.45:0);amp[i]=(amp[i]||0)+((s.mv?1:0)-(amp[i]||0))*.2;});
+ g.lineCap='round';g.lineWidth=Math.max(1.4,sz*.1);g.strokeStyle=g.fillStyle='#ffe27a';
+ for(const part of [0,1]){g.globalAlpha=part?.4:1;g.beginPath();
+  snap.residents.forEach((r,i)=>{if(st[i].hide>0)return;if((part===1)!==!!(dk(S[r[0]].level)||st[i].inside))return;
+   const fx=X(st[i].x),fy=Y(st[i].y),a=amp[i]*sz*.28,sw=Math.sin(ph[i]);
+   const hip=fy-sz*.42,neck=fy-sz*.72;
+   g.moveTo(fx+R,fy-sz*.86);g.arc(fx,fy-sz*.86,R,0,6.283);
+   g.moveTo(fx,neck);g.lineTo(fx,hip);
+   g.moveTo(fx,hip);g.lineTo(fx+sw*a,fy);g.moveTo(fx,hip);g.lineTo(fx-sw*a,fy);
+   g.moveTo(fx,neck+sz*.06);g.lineTo(fx-sw*a,neck+sz*.3);g.moveTo(fx,neck+sz*.06);g.lineTo(fx+sw*a,neck+sz*.3);});
+  g.fill();g.stroke();}
+ g.globalAlpha=1;
+ parts=parts.filter(p=>(p.t+=.04)<1);
+ for(const p of parts){const a=S[p.a],b=S[p.b];g.fillStyle='#fff';g.beginPath();
+  g.arc(X(a.x+(b.x-a.x)*p.t),Y(a.y+(b.y-a.y)*p.t+FL-.02),3,0,6.283);g.fill();}
+}
+draw();
+</script>

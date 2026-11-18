@@ -1,7 +1,7 @@
 # Uses the project venv if it exists, so `make test` works without activating it.
 PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: venv install test chaos check lint fix demo node clean
+.PHONY: venv install test chaos check lint fix demo sim node clean
 
 # One-time setup: create .venv and install everything (editable).
 venv:
@@ -29,8 +29,12 @@ lint:
 fix:
 	$(PY) -m ruff check --fix src tests
 
-# P6: run the sim on real nodes (sim + dashboard: teammate)
+# P6: the sim on real nodes, live at http://localhost:8000 (sim + dashboard: teammate)
+# demo = locked seed + scripted attacks (H10); sim = free play with the control panel
 demo:
+	$(PY) -m hollowmesh.sim --script
+
+sim:
 	$(PY) -m hollowmesh.sim
 
 # P11: a single node over HTTP

@@ -21,9 +21,10 @@ http = [
     "uvicorn>=0.29",
     "httpx>=0.27",
 ]
-# H6: live WebSocket stream for the dashboard
+# H6: the sim's live view (FastAPI + WebSocket; uvicorn[standard] brings websockets)
 sim = [
-    "websockets>=12",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
 ]
 dev = [
     "pytest>=8",
