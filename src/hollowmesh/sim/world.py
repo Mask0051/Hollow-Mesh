@@ -1,7 +1,16 @@
 """H2: the Hollow's floor plan (spec/world.json) — an irregular vault cross-section.
 
-Rooms have different widths and names per level. The three stairwells are in the same
-columns on every level so the staircases line up; their directions alternate.
+The shape is the story: it gets harder to reach the deeper you go.
+
+    L0 GATE   8 rooms   ─┬── 3 stairwells
+    L1 HOMES 10 rooms   ─┬── 2 stairwells (one per wing below)
+    L2 FARMS  9 rooms, split into two wings by a collapsed tunnel
+    L3 DEEP   6 rooms   ─┴── ONE service shaft up to the west wing
+
+Stairwells don't line up, so a message (or a person) climbing out of the Deep has to cross
+every level to reach the next stairwell. Cut the one shaft and the Deep is on its own.
+
+Each stairwell has its own column `x`; it must sit inside both rooms it joins.
 Sector ids use the payload format from Doc 2 §1.2: "L2-S07" (level 2, sector 7).
 
 `python -m hollowmesh.sim.world` rewrites spec/world.json.
@@ -11,16 +20,29 @@ from __future__ import annotations
 
 import json
 import pathlib
-import random
 
-LEVELS, PER_LEVEL = 4, 10
-STAIRS = {"a": (1, 0.17, +1), "b": (5, 0.50, -1), "c": (8, 0.80, +1)}  # sector idx, x column, direction
-GAP, LM, RM = 0.006, 0.022, 0.978
-NAMES = [
-    ["Vault Door", "Airlock", "Security", "Armory", "Guard Post", "Overseer", "Comms", "Lobby", "Archive", "Exit Tunnel"],
-    ["Dorm A", "Stair Hall", "Mess Hall", "Kitchen", "Clinic", "Rec Room", "Dorm B", "Laundry", "Dorm C", "Storage"],
-    ["Hydroponics", "Pump Hall", "Workshop", "Garden A", "Garden B", "Seed Bank", "Forge", "Garden C", "Recycler", "Tool Room"],
-    ["Reactor", "Coolant", "Pump Room", "Generators", "Mine Shaft", "Ore Store", "Control", "Boiler", "Waste Tank", "Vent Hub"],
+Y0, DY = 0.14, 0.24  # centre of level 0, distance between levels (fractions of height)
+GAP, RUBBLE, LM, RM = 0.006, 0.03, 0.022, 0.978  # room gap, collapsed gap, left/right edge
+MIN_OVERLAP = 0.045  # a stairwell column needs this much room above and below it
+
+# (name, relative width) per room, west to east.
+ROOMS = [
+    [("Vault Door", 1.5), ("Airlock", .9), ("Security", 1.0), ("Armory", .8),
+     ("Overseer", 1.3), ("Comms", .9), ("Lobby", 1.4), ("Exit Tunnel", 1.1)],
+    [("Dorm A", 1.0), ("Stair Hall", 1.1), ("Mess Hall", 1.3), ("Kitchen", .8), ("Clinic", .9),
+     ("Rec Room", 1.2), ("Dorm B", 1.0), ("Laundry", .8), ("Dorm C", 1.0), ("Storage", .9)],
+    [("Hydroponics", 1.3), ("Pump Hall", 1.0), ("Garden A", 1.2), ("Seed Bank", .9),
+     ("Garden B", 1.2), ("Workshop", .9), ("Forge", 1.0), ("Garden C", 1.1), ("Recycler", 1.0)],
+    [("Coolant", 1.0), ("Service Shaft", 1.6), ("Reactor", 1.0), ("Generators", 1.3),
+     ("Mine Face", 1.4), ("Vent Hub", 1.0)],
+]
+LEVELS = len(ROOMS)
+COLLAPSED = {(2, 3)}  # (level, i): no tunnel between rooms i and i+1 -> L2 has two wings
+# (upper level, room above, room below, letter). Edge id: ST-{lv}-{lv+1}-{letter}.
+STAIRS = [
+    (0, 2, 2, "a"), (0, 4, 5, "b"), (0, 6, 8, "c"),
+    (1, 0, 0, "a"), (1, 7, 6, "b"),  # one into each Farms wing
+    (2, 2, 1, "a"),  # the only way in or out of the Deep
 ]
 
 
@@ -28,45 +50,37 @@ def sector_id(level: int, i: int) -> str:
     return f"L{level}-S{i:02d}"
 
 
-def _split(rng, start, end, n):
-    avail = end - start - GAP * (n - 1)
-    parts = [rng.uniform(0.8, 1.25) for _ in range(n)]
-    tot, x, out = sum(parts), start, []
-    for p in parts:
-        wv = avail * p / tot
-        out.append((x + wv / 2, wv))
-        x += wv + GAP
-    return out
-
-
-def _layout(rng):
-    (i1, c1, _), (i5, c5, _), (i8, c8, _) = STAIRS["a"], STAIRS["b"], STAIRS["c"]
-    w1, w5, w8 = (rng.uniform(0.08, 0.105) for _ in range(3))
-    out = [None] * PER_LEVEL
-    out[i1], out[i5], out[i8] = (c1, w1), (c5, w5), (c8, w8)
-    out[0] = _split(rng, LM, c1 - w1 / 2 - GAP, 1)[0]
-    out[2:5] = _split(rng, c1 + w1 / 2 + GAP, c5 - w5 / 2 - GAP, 3)
-    out[6:8] = _split(rng, c5 + w5 / 2 + GAP, c8 - w8 / 2 - GAP, 2)
-    out[9] = _split(rng, c8 + w8 / 2 + GAP, RM, 1)[0]
+def _rooms(level: int) -> list[tuple[float, float]]:
+    """(centre x, width) of each room on a level, filling LM..RM."""
+    rooms = ROOMS[level]
+    gaps = [RUBBLE if (level, i) in COLLAPSED else GAP for i in range(len(rooms) - 1)]
+    scale = (RM - LM - sum(gaps)) / sum(w for _, w in rooms)
+    x, out = LM, []
+    for i, (_, w) in enumerate(rooms):
+        out.append((x + w * scale / 2, w * scale))
+        x += w * scale + (gaps[i] if i < len(gaps) else 0)
     return out
 
 
 def build_world() -> dict:
-    rng = random.Random(11)  # fixed seed -> same map every run (separate from the sim seed)
     sectors, edges = [], []
-    for lv in range(LEVELS):
-        lay = _layout(rng)
-        for i, (cx, wv) in enumerate(lay):
+    lay = [_rooms(lv) for lv in range(LEVELS)]
+    for lv, rooms in enumerate(lay):
+        for i, (cx, wv) in enumerate(rooms):
             sectors.append({"id": sector_id(lv, i), "level": lv, "x": round(cx, 4),
-                            "y": round(0.14 + 0.24 * lv, 3), "w": round(wv, 4),
-                            "name": NAMES[lv][i]})
-        for i in range(PER_LEVEL - 1):
-            a, b = sector_id(lv, i), sector_id(lv, i + 1)
-            edges.append({"id": f"T-{a}-{b}", "a": a, "b": b, "kind": "tunnel"})
-    for lv in range(LEVELS - 1):
-        for k, (i, _, d) in STAIRS.items():
-            edges.append({"id": f"ST-{lv}-{lv + 1}-{k}", "a": sector_id(lv, i),
-                          "b": sector_id(lv + 1, i), "kind": "stairwell", "dir": d})
+                            "y": round(Y0 + DY * lv, 3), "w": round(wv, 4),
+                            "name": ROOMS[lv][i][0]})
+        for i in range(len(rooms) - 1):
+            if (lv, i) not in COLLAPSED:
+                a, b = sector_id(lv, i), sector_id(lv, i + 1)
+                edges.append({"id": f"T-{a}-{b}", "a": a, "b": b, "kind": "tunnel"})
+    for n, (lv, up, down, k) in enumerate(STAIRS):
+        (ux, uw), (dx, dw) = lay[lv][up], lay[lv + 1][down]
+        lo, hi = max(ux - uw / 2, dx - dw / 2), min(ux + uw / 2, dx + dw / 2)
+        assert hi - lo >= MIN_OVERLAP, f"ST-{lv}-{lv + 1}-{k}: rooms barely overlap"
+        edges.append({"id": f"ST-{lv}-{lv + 1}-{k}", "a": sector_id(lv, up),
+                      "b": sector_id(lv + 1, down), "kind": "stairwell",
+                      "x": round((lo + hi) / 2, 4), "dir": 1 if n % 2 else -1})
     return {"levels": LEVELS, "sectors": sectors, "edges": edges}
 
 
