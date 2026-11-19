@@ -1,0 +1,382 @@
+<!doctype html><meta charset="utf-8"><title>Hollow sim</title>
+<style>
+:root{--bg:#0d0a08;--panel:#16110d;--well:#0f0b09;--line:#2e251e;--text:#ebe4db;--mute:#8d8379;
+ --accent:#ffe27a;--ok:#5fe08a;--bad:#ff4d3d;--lie:#c06bff}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:13px/1.3 system-ui,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:7px 12px;display:flex;flex-direction:column;gap:7px;z-index:6}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.grow{flex:1}
+.brand{font-weight:700;font-size:15px;letter-spacing:.03em;color:var(--accent);margin-right:6px}
+.brand small{color:var(--mute);font-weight:400;font-size:12px;margin-left:4px}
+.group{display:flex;align-items:center;gap:5px;padding:3px 5px 3px 10px;border:1px solid var(--line);border-radius:10px;background:var(--well)}
+.lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--mute);margin-right:3px}
+button,select{font:inherit;color:var(--text);background:#241d18;border:1px solid #3b3029;border-radius:7px;padding:4px 10px;cursor:pointer;
+ transition:background .12s,border-color .12s,color .12s}
+button:hover{background:#30271f;border-color:#5a4a3d}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button:disabled{opacity:.35;cursor:default;background:#241d18;border-color:#3b3029}
+/* on/off switches */
+.sw{display:inline-flex;align-items:center;gap:7px;padding:4px 10px 4px 6px}
+.sw .tr{width:28px;height:16px;border-radius:8px;background:#4a1d1a;position:relative;flex:none;transition:background .15s}
+.sw .tr::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#d9cfc6;transition:left .15s}
+.sw[aria-pressed=true] .tr{background:#2f9e57}.sw[aria-pressed=true] .tr::after{left:14px;background:#fff}
+.sw .st{font-size:10px;font-weight:700;letter-spacing:.05em;min-width:22px;text-align:left}
+.sw[aria-pressed=true] .st{color:var(--ok)}.sw[aria-pressed=false] .st{color:var(--bad)}
+.sw.risk .tr{background:#3b3029}.sw.risk[aria-pressed=true] .tr{background:var(--lie)}
+.sw.risk[aria-pressed=false] .st{color:var(--mute)}.sw.risk[aria-pressed=true] .st{color:var(--lie)}
+/* level power chips */
+.lv{padding:3px 8px;min-width:34px;font-weight:600;font-size:12px;border-color:var(--c);color:var(--c)}
+.lv.out{background:#2a0e0b;border-color:var(--bad);color:var(--bad);text-decoration:line-through}
+button.act{display:inline-flex;align-items:center;gap:5px}
+/* status */
+.stat{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px}
+.bar{width:90px;height:7px;border-radius:4px;background:#2a221c;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+#sync{color:var(--text);font-variant-numeric:tabular-nums;min-width:32px}
+.pill{font-size:11px;font-weight:600;padding:1px 6px;border-radius:9px;border:1px solid #3b3029;color:#5a4f46}
+.pill.hit{border-color:var(--c);color:#111;background:var(--c)}
+#play{width:34px;padding:4px 0}
+#spd{min-width:42px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums;color:var(--accent);padding:4px 4px}
+#clock{min-width:150px;text-align:right;color:var(--mute);font-size:12px;font-variant-numeric:tabular-nums}
+#clock b{color:var(--text);font-weight:600}#clock .paused{color:var(--accent);font-weight:700}
+#hint{color:var(--mute);font-size:12px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+kbd{font:11px ui-monospace,monospace;border:1px solid #4a3d33;border-bottom-width:2px;border-radius:4px;padding:0 4px;color:var(--text)}
+/* canvas + overlays */
+#wrap{position:relative;flex:1;min-height:0}
+canvas{width:100%;height:100%;display:block}
+#toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);max-width:min(720px,calc(100% - 340px));z-index:5;
+ display:flex;gap:10px;align-items:flex-start;background:#3a0f0c;border:1px solid var(--bad);border-radius:10px;padding:9px 12px;
+ box-shadow:0 8px 30px #000a;color:#ffd9d4}
+#toast[hidden]{display:none}#toast b{color:#fff}#toast .ev{font:11px ui-monospace,monospace;color:#ff9c90;margin-top:3px}
+#toast button{padding:0 7px;background:none;border:none;color:#ffb3ad;font-size:16px}
+#help{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 32px));z-index:7;background:var(--panel);
+ border:1px solid #4a3d33;border-radius:12px;padding:14px 18px;box-shadow:0 12px 40px #000c;font-size:13px}
+#help[hidden]{display:none}#help h3{margin:0 0 8px;font-size:14px;color:var(--accent)}
+#help h4{margin:12px 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+#help ul{margin:0;padding-left:18px}#help li{margin:2px 0}
+#help .lg{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 16px}
+#help .lg span{display:inline-block;width:18px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
+#help .x{position:absolute;top:8px;right:8px;background:none;border:none;font-size:18px;color:var(--mute)}
+/* phone */
+#phone{position:absolute;top:12px;right:28px;width:270px;height:min(520px,calc(100% - 40px));z-index:4;
+ display:flex;flex-direction:column;background:#111;border:2px solid #555;border-radius:22px;padding:12px;
+ box-shadow:0 8px 30px #000a;font:13px system-ui}
+#phone[hidden]{display:none}
+.ph-top{display:flex;align-items:center;gap:8px}.ph-top b{font-size:15px}
+#psig{margin-left:auto;font-size:12px;color:#5fe08a}#psig.off{color:#ff6a4d}
+#px{padding:0 8px;border-radius:50%}
+.ph-sub{color:#999;font-size:12px;margin:2px 0 8px}
+.ph-me{display:flex;align-items:center;gap:6px;font-size:12px;color:#bbb;margin-bottom:8px}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid #0006;flex:none}
+#pheld{margin-left:auto;color:#888}
+#pfeed{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:6px;background:#0b0b0b;border-radius:10px}
+.msg{max-width:85%;padding:6px 9px;border-radius:12px;background:#262626;align-self:flex-start;overflow-wrap:anywhere}
+.msg.mine{align-self:flex-end;background:#1f3b5c}
+.msg .meta{font-size:10px;color:#999;margin-bottom:2px}
+.msg .body{display:flex;align-items:center;gap:6px}
+.empty{color:#666;text-align:center;margin:auto;font-size:12px}
+.ph-colors{display:flex;gap:6px;margin:8px 0;justify-content:space-between}
+.ph-colors button{width:34px;height:34px;border-radius:50%;padding:0;border:2px solid #0008}
+#pform{display:flex;gap:6px}
+#ptext{flex:1;min-width:0;background:#222;color:#eee;border:1px solid #555;border-radius:14px;padding:6px 10px}
+#pform button{border-radius:14px}
+</style>
+<header>
+ <div class="row">
+  <span class="brand">HOLLOW MESH<small>live sim</small></span>
+  <span class="stat" title="How many of all records every phone holds, on average">Synced
+   <span class="bar"><i id="syncbar"></i></span><span id="sync">–</span></span>
+  <span class="stat" title="Levels the latest &quot;SOS from Deep&quot; post has reached">SOS reached <span id="sos"></span></span>
+  <span id="hint">Click a <b>person</b> for their phone · a <b>stairwell</b> to close it</span>
+  <div class="group" aria-label="Playback">
+   <button id="play" title="Play / pause (Space)" onclick="togglePause()">❚❚</button>
+   <button id="step" title="Advance one tick while paused (→)" onclick="send({cmd:'step'})">Step ›</button>
+   <button title="Slower ([ or -)" onclick="nudge(-1)">−</button>
+   <span id="spd" title="Playback speed">1×</span>
+   <button title="Faster (] or +)" onclick="nudge(1)">+</button>
+  </div>
+  <span id="clock"></span>
+  <button title="Help (?)" onclick="toggleHelp()">?</button>
+ </div>
+ <div class="row">
+  <div class="group"><span class="lbl">Networks</span>
+   <button id="bnet" class="sw" aria-pressed="true" title="The Directorate's Wi-Fi: long-range links between any two phones"
+    onclick="send({cmd:'network',on:!(snap&&snap.net_up)})"><span class="tr"></span>Wi-Fi<span class="st">ON</span></button>
+   <button id="bmesh" class="sw" aria-pressed="true" title="Hollow Mesh: phone-to-phone in a room, plus relays along tunnels and stairwells"
+    onclick="send({cmd:'mesh',on:!(snap&&snap.mesh_up)})"><span class="tr"></span>Hollow Mesh<span class="st">ON</span></button>
+  </div>
+  <div class="group"><span class="lbl">Directorate</span>
+   <span class="lbl" style="letter-spacing:.04em">Power</span><span id="levels" style="display:flex;gap:4px"></span>
+   <button id="brelay" class="sw risk" aria-pressed="false" title="A relay on a stairwell that rewrites messages it carries. Receivers catch it."
+    onclick="send({cmd:'relay',on:!(snap&&snap.lying.length)})"><span class="tr"></span>Lying relay<span class="st">OFF</span></button>
+  </div>
+  <div class="group"><span class="lbl">Actions</span>
+   <button class="act" title="A resident on the deepest level (L3) posts an urgent message" onclick="send({cmd:'inject',sector:'L3-S04'})">📣 SOS from Deep</button>
+   <button class="act" title="Turn everything back on: networks, power, stairwells, no liars" onclick="send({cmd:'heal'})">↺ Reset all</button>
+  </div>
+ </div>
+</header>
+<div id="wrap"><canvas id="c"></canvas>
+ <div id="toast" role="alert" hidden><div><b id="tt"></b><div id="tm"></div><div class="ev" id="tev"></div></div>
+  <button title="Dismiss" onclick="$('toast').hidden=true">×</button></div>
+ <div id="help" hidden><button class="x" title="Close (Esc)" onclick="toggleHelp(false)">×</button>
+  <h3>How to use the sim</h3>
+  <ul><li><b>Click a person</b> to use their phone: send a colour or a message and watch it spread.
+   Each person turns the colour of the newest beacon <i>their</i> phone has received.</li>
+   <li><b>Click a stairwell</b> to close or reopen it. Closed stairwells carry no messages.</li>
+   <li><b>Networks</b>: switch the Directorate's Wi-Fi and the Hollow Mesh on/off to compare them.</li>
+   <li><b>Directorate</b>: cut power to a level: its Wi-Fi goes dark and only ~30% of phones there stay on (mesh only), or plant a lying relay.</li></ul>
+  <h4>Stairwells &amp; tunnels</h4>
+  <div class="lg"><div><span style="background:#5fe08a"></span>open</div><div><span style="background:#e0a020"></span>degraded (power out)</div>
+   <div><span style="background:#ff3b30"></span>closed</div><div><span style="background:#c06bff"></span>lying relay</div></div>
+  <h4>Keyboard</h4>
+  <div class="lg"><div><kbd>Space</kbd> play / pause</div><div><kbd>→</kbd> step one tick</div>
+   <div><kbd>[</kbd> <kbd>]</kbd> slower / faster</div><div><kbd>Esc</kbd> close panels</div><div><kbd>?</kbd> this help</div></div>
+ </div>
+ <div id="phone" hidden>
+  <div class="ph-top"><b id="pn"></b><span id="psig"></span><button id="px" title="Close (Esc)" onclick="closePhone()">×</button></div>
+  <div class="ph-sub" id="proom"></div>
+  <div class="ph-me"><span class="dot" id="pdot"></span><span id="pcol"></span><span id="pheld"></span></div>
+  <div id="pfeed"></div>
+  <div class="ph-colors" id="pcolors"></div>
+  <form id="pform"><input id="ptext" maxlength="280" placeholder="Message everyone…" autocomplete="off"><button>Send</button></form>
+ </div>
+</div>
+<script>
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+let W,S,E,EA,snap,parts=[],st=null,ph=[],amp=[],w=0,h=0,rocks=[],SW=[],RUB=[];
+const FL=.0875,RH=.205,BQ=26,SPD=4.5;                  // floor offset, room height (fractions of h), stairwell width px, walk px/frame
+const ws=new WebSocket(`ws://${location.host}/ws`);
+const send=o=>{if(ws.readyState===1)ws.send(JSON.stringify(o));};
+const $=id=>document.getElementById(id);
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
+fetch('/world.json').then(r=>r.json()).then(x=>{W=x;S=x.sectors;E=x.edges;S.forEach((s,i)=>s.i=i);
+ const byId={};S.forEach(s=>byId[s.id]=s);EA=E.map(e=>[byId[e.a],byId[e.b]]);
+ S.forEach(s=>{s.li=+s.id.slice(-2);s.cols=[];});            // li: index within its level
+ E.forEach((e,i)=>{if(e.kind!=='stairwell')return;SW.push(i);EA[i][0].cols.push(e.x);EA[i][1].cols.push(e.x);});
+ const tun={};E.forEach(e=>{if(e.kind==='tunnel')tun[e.a]=1;});  // neighbours with no tunnel: collapsed
+ S.forEach((s,i)=>{const n=S[i+1];if(n&&n.level===s.level&&!tun[s.id])RUB.push([s,n]);});});
+for(let i=0;i<260;i++)rocks.push([Math.random(),Math.random(),1+Math.random()*3,Math.random()]);
+function fit(){const d=window.devicePixelRatio||1;w=cv.clientWidth;h=cv.clientHeight;
+ cv.width=w*d;cv.height=h*d;g.setTransform(d,0,0,d,0,0);}
+new ResizeObserver(fit).observe(cv);fit();
+
+const T=[{s:'GATE',d:'0 m',fill:'#1b2a33',wall:'#3d5666',acc:'#6cc7e8'},
+         {s:'HOMES',d:'-40 m',fill:'#33261a',wall:'#6b4e32',acc:'#ffb347'},
+         {s:'FARMS',d:'-80 m',fill:'#1c2e1b',wall:'#3f6a3a',acc:'#7be06b'},
+         {s:'DEEP',d:'-120 m',fill:'#361a16',wall:'#7a3a30',acc:'#ff6a4d'}];
+const tgt=r=>[r[1],S[r[0]].y+FL+(r[2]-S[r[0]].y)*.12];       // feet rest on the room floor
+
+// A stairwell is one column at e.x: a dark doorway in the room above, steps in the room below.
+function stairPath(e,i,down){
+ const[a,b]=EA[i],xi=e.x,xo=xi+(e.dir||1)*BQ/w,fa=a.y+FL,fb=b.y+FL;
+ return down?[[xo,fa,0],[xi,fa,2],[xi,fb,1],[xo,fb,0]]     // flag 1 = inside the box (dim), 2 = vanish here, appear at next point
+            :[[xo,fb,0],[xi,fb,2],[xi,fa,1],[xo,fa,0]];}
+
+// ---- HUD: playback speed (server-side; never changes what a tick does) ----
+const SPEEDS=[0.1,0.25,0.5,1,2,5,10],TICK_MIN=10;let lastSpeed=1;   // one tick = 10 sim-minutes (runner.TICK_MS)
+function setSpeed(x){send({cmd:'speed',x});if(x>0)lastSpeed=x;}
+function togglePause(){setSpeed(snap&&snap.speed>0?0:lastSpeed);}
+function nudge(d){const cur=snap&&snap.speed>0?snap.speed:lastSpeed;let i=SPEEDS.indexOf(cur);if(i<0)i=3;
+ setSpeed(SPEEDS[Math.max(0,Math.min(SPEEDS.length-1,i+d))]);}
+const pad=n=>String(n).padStart(2,'0');
+function simTime(t){const m=t*TICK_MIN;return`Day ${Math.floor(m/1440)+1} · ${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;}
+function setSw(id,on){const b=$(id);b.setAttribute('aria-pressed',on);b.querySelector('.st').textContent=on?'ON':'OFF';}
+// Level power chips, one per level, coloured like the level.
+const lvB=T.map((t,l)=>{const b=el('button','lv','L'+l);b.style.setProperty('--c',t.acc);
+ b.onclick=()=>send({cmd:'power',level:l,on:!!(snap&&snap.dark.includes(l))});$('levels').appendChild(b);return b;});
+const sosP=T.map((t,l)=>{const p=el('span','pill','L'+l);p.style.setProperty('--c',t.acc);$('sos').appendChild(p);return p;});
+function hud(){const sp=snap.speed||0;if(sp>0)lastSpeed=sp;
+ setSw('bnet',snap.net_up);setSw('bmesh',snap.mesh_up);setSw('brelay',snap.lying.length>0);
+ $('brelay').title=snap.lying.length?`Lying relay on ${snap.lying.join(', ')}: click to remove`
+  :'A relay on a stairwell that rewrites messages it carries. Receivers catch it.';
+ lvB.forEach((b,l)=>{const out=snap.dark.includes(l);b.classList.toggle('out',out);
+  b.title=`Level ${l} (${T[l].s.toLowerCase()}): ${out?'POWER OUT (no Wi-Fi, mesh only). Click to restore':'powered. Click to cut power (kills Wi-Fi there)'}`;});
+ const reached=snap.probeLevels||[];sosP.forEach((p,l)=>p.classList.toggle('hit',reached.includes(l)));
+ const pc=Math.round(snap.syncPct*100);$('sync').textContent=pc+'%';$('syncbar').style.width=pc+'%';
+ $('play').textContent=sp>0?'❚❚':'▶';$('play').title=sp>0?'Pause (Space)':'Play (Space)';
+ $('step').disabled=sp>0;$('spd').textContent=(sp>0?sp:lastSpeed)+'×';
+ $('clock').replaceChildren(...(sp>0?[]:[el('span','paused','PAUSED'),' · ']),el('b',null,simTime(snap.tick)),` · tick ${snap.tick}`);}
+function toggleHelp(on){$('help').hidden=on===undefined?!$('help').hidden:!on;}
+let toastT=null;
+function showAlert(a){const ev=a.evidence||{},sh=x=>(x||'?').slice(0,10)+'…';
+ $('tt').textContent=`⚠ ${a.kind==='tamper'?'Tampering caught':'Fork caught'} — message rejected`;
+ $('tm').textContent=a.kind==='tamper'
+  ?`Record #${a.seq} from ${sh(a.author)} arrived altered via ${sh(a.peer)}. Its signature doesn't match its content, so no phone accepts it.`
+  :`Author ${sh(a.author)} signed two different records #${a.seq}.`;
+ $('tev').textContent=`signed hash ${sh(ev.claimed_id)}  ≠  content hash ${sh(ev.computed_id)}`;
+ $('toast').hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{$('toast').hidden=true;},8000);}
+addEventListener('keydown',e=>{if(e.key==='Escape'){closePhone();toggleHelp(false);return;}
+ if(/^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName))return;
+ if(e.key==='?'){toggleHelp();return;}
+ if(e.code==='Space'){e.preventDefault();togglePause();}
+ else if(e.key==='ArrowRight'||e.key==='.'){if(snap&&!snap.speed)send({cmd:'step'});}
+ else if(e.key===']'||e.key==='='||e.key==='+')nudge(1);
+ else if(e.key==='['||e.key==='-')nudge(-1);});
+
+// ---- Phones: click a resident to see and use THEIR node ----
+// Their colour = the newest beacon their own node holds (server decides; we just draw it).
+const DEF='#ffe27a',COLORS=[['red','#ff3b30'],['blue','#3b82f6'],['green','#22c55e'],['purple','#a855f7'],['default','#ffe27a']];
+const colorName=c=>(COLORS.find(x=>x[1]===c)||[c])[0];
+let sel=null,phoneBusy=false,feedKey='';
+COLORS.forEach(([n,c])=>{const b=el('button');b.style.background=c;b.title=n==='default'?'Send the default colour':'Send '+n;
+ b.onclick=()=>{if(sel!==null)send({cmd:'beacon',resident:sel,color:c,label:n});};$('pcolors').appendChild(b);});
+$('pform').onsubmit=e=>{e.preventDefault();const t=$('ptext');
+ if(sel!==null&&t.value.trim())send({cmd:'post',resident:sel,text:t.value.slice(0,280)});t.value='';};
+function openPhone(i){sel=i;feedKey='';$('phone').hidden=false;refreshPhone();}
+function closePhone(){sel=null;$('phone').hidden=true;}
+function refreshPhone(){if(sel===null||phoneBusy)return;phoneBusy=true;const want=sel;
+ fetch('/resident/'+want).then(r=>r.json()).then(p=>{if(want===sel&&!p.error)renderPhone(p);})
+  .catch(()=>{}).finally(()=>{phoneBusy=false;});}
+function renderPhone(p){
+ $('pn').textContent=p.name+"'s phone";
+ $('proom').textContent=`${p.room} · ${p.sector} · level ${p.level}`;
+ $('psig').textContent=p.peers?`📶 ${p.peers} in range`:'no signal';$('psig').className=p.peers?'':'off';
+ $('pdot').style.background=p.color;$('pcol').textContent='showing '+colorName(p.color);
+ $('pheld').textContent=`holds ${p.held}/${p.total}`;
+ const key=p.feed.map(f=>f.from+':'+f.seq).join();if(key===feedKey)return;feedKey=key;  // only redraw on change
+ const box=$('pfeed');box.replaceChildren();
+ if(!p.feed.length){box.appendChild(el('div','empty','Nothing received yet'));return;}
+ for(const f of p.feed){const m=el('div','msg'+(f.mine?' mine':''));
+  m.appendChild(el('div','meta',`${f.mine?'you':f.from} · t${f.tick}${f.sector?' · '+f.sector:''}`));
+  const b=el('div','body');
+  if(f.type==='beacon'){const d=el('span','dot');d.style.background=f.color;b.append(d,el('span',null,'sent '+(f.label||colorName(f.color))));}
+  else b.appendChild(el('span',null,(f.type==='help_request'?'🆘 ':'')+(f.text||'')));
+  m.appendChild(b);box.appendChild(m);}}
+// Click / hover hit-test against where each figure is drawn right now.
+const figSize=()=>Math.max(12,Math.min(26,h/30));
+// Both halves of every stairwell, exactly where draw() puts them (also the click targets).
+function stairBoxes(){const out=[],rh=h*RH;if(!S)return out;
+ for(const ei of SW){const[a,b]=EA[ei],x=w*E[ei].x-BQ/2;
+  for(const[s,open]of[[a,true],[b,false]]){const fl=h*s.y+rh/2-h*.015;
+   out.push({x,top:fl-rh*.5,fl,ei,open,L:s.level});}}
+ return out;}
+function stairRects(){return stairBoxes().map(b=>({x:b.x,y:b.top-6,w:BQ,h:b.fl-b.top+6,ei:b.ei}));}
+const mpos=e=>{const b=cv.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top];};
+function stairAt(e){const[mx,my]=mpos(e),r=stairRects().find(r=>mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h);
+ return r?r.ei:null;}
+let hoverStair=null;
+function hit(e,reach=.8){if(!snap||!st)return null;const[mx,my]=mpos(e);
+ const sz=figSize();let best=null,bd=sz*reach;
+ st.forEach((s,i)=>{if(s.hide>0)return;const d=Math.hypot(mx-s.x*w,my-(s.y*h-sz*.45));if(d<bd){bd=d;best=i;}});
+ return best;}
+// Over a stairwell, a person only wins if you click right on them (people crowd stair rooms).
+cv.addEventListener('click',e=>{const se=stairAt(e),i=hit(e,se!==null?.45:.8);
+ if(i!==null)openPhone(i);else if(se!==null)send({cmd:'toggle_stairwell',id:E[se].id});});
+cv.addEventListener('mousemove',e=>{const se=stairAt(e),i=hit(e,se!==null?.45:.8);
+ hoverStair=i===null?se:null;cv.style.cursor=i!==null||se!==null?'pointer':'default';
+ cv.title=hoverStair!==null&&snap?`Stairwell ${EA[se][0].name} ↕ ${EA[se][1].name}: click to ${snap.edges[se]===2?'reopen':'close'}`:'';});
+cv.addEventListener('mouseleave',()=>{hoverStair=null;});
+
+ws.onmessage=m=>{snap=JSON.parse(m.data);hud();refreshPhone();if(!S)return;
+ if(!st||st.length!==snap.residents.length)st=snap.residents.map(r=>{const t=tgt(r);return{x:t[0],y:t[1],sec:r[0],path:[],inside:0}});
+ snap.residents.forEach((r,i)=>{const s=st[i];
+  if(r[0]!==s.sec){                                          // changed room: walk the stairs if levels differ
+   let done=false;
+   E.forEach((e,k)=>{if(e.kind!=='stairwell'||done)return;const[a,b]=EA[k];
+    if(a.i===s.sec&&b.i===r[0]){s.path.push(...stairPath(e,k,true));done=true;}
+    else if(b.i===s.sec&&a.i===r[0]){s.path.push(...stairPath(e,k,false));done=true;}});
+   s.path.push([...tgt(r),0]);s.sec=r[0];}});
+ for(const[a,b]of snap.messages)parts.push({a,b,t:0});
+ if(snap.alerts.length)showAlert(snap.alerts[0]);};
+
+function decor(L,i,x,fl,rw,on){
+ const u=rw/10,a=T[L].acc;g.globalAlpha=on?1:.35;
+ if(L===0){ if(i===0){g.strokeStyle='#8aa2b0';g.lineWidth=4;g.beginPath();g.arc(x+rw/2,fl-26,22,0,6.283);g.stroke();
+   g.lineWidth=2;g.beginPath();for(let k=0;k<6;k++){const t=k*1.047;g.moveTo(x+rw/2,fl-26);g.lineTo(x+rw/2+22*Math.cos(t),fl-26+22*Math.sin(t));}g.stroke();}
+  else if(i%2){g.fillStyle='#24323b';g.fillRect(x+u,fl-34,u*1.6,34);g.fillRect(x+u*3,fl-34,u*1.6,34);}
+  else{g.fillStyle='#0f171c';g.fillRect(x+u,fl-16,u*3,16);g.fillStyle=a;g.fillRect(x+u*1.3,fl-13,u*2.4,6);}}
+ else if(L===1){ if(i%2){g.fillStyle='#5a3f26';g.fillRect(x+u,fl-12,u*3,4);g.fillRect(x+u*1.3,fl-12,3,12);g.fillRect(x+u*3.7,fl-12,3,12);}
+  else{g.fillStyle='#6b4e32';g.fillRect(x+u,fl-10,u*3.4,10);g.fillStyle='#e8d9b5';g.fillRect(x+u*1.1,fl-14,u*.9,5);}}
+ else if(L===2){ if(i%2){g.fillStyle='#2b3a2a';g.fillRect(x+u,fl-18,u*3,18);g.strokeStyle=a;g.lineWidth=1.5;
+   g.beginPath();g.arc(x+u*2.5,fl-9,5,0,6.283);g.stroke();}
+  else{g.fillStyle='#4a3524';g.fillRect(x+u,fl-6,u*3.6,6);g.strokeStyle=a;g.lineWidth=2;g.beginPath();
+   for(let k=0;k<4;k++){g.moveTo(x+u*(1.4+k*.9),fl-6);g.lineTo(x+u*(1.4+k*.9),fl-17);}g.stroke();}}
+ else{ if(i%2){g.fillStyle=a;g.globalAlpha=on?.8:.3;g.beginPath();g.arc(x+u*2.4,fl-14,11,0,6.283);g.fill();
+   g.fillStyle='#2a1512';g.globalAlpha=on?1:.35;g.fillRect(x+u*1.2,fl-4,u*2.4,4);}
+  else{g.strokeStyle=a;g.lineWidth=3;g.beginPath();g.moveTo(x+u,fl-30);g.lineTo(x+u*5,fl-30);
+   g.moveTo(x+u,fl-22);g.lineTo(x+u*5,fl-22);g.stroke();}}
+ g.globalAlpha=1;}
+
+function half(x,top,fl,i){if(i===undefined)return;const stt=snap.edges[i],lie=snap.lying.includes(E[i].id);
+ g.fillStyle=lie?'#c06bff':stt==2?'#ff3b30':stt==1?'#e0a020':'#5fe08a';g.fillRect(x,top-4,BQ,3);
+ if(stt==2){g.strokeStyle='#ff3b30';g.lineWidth=2.5;g.beginPath();g.moveTo(x+3,top+4);g.lineTo(x+BQ-3,fl-4);
+  g.moveTo(x+BQ-3,top+4);g.lineTo(x+3,fl-4);g.stroke();}}
+
+function draw(){
+ requestAnimationFrame(draw);if(!snap||!S||!st)return;
+ const X=p=>p*w,Y=p=>p*h,rh=Y(RH),dk=l=>snap.dark.includes(l);
+ g.clearRect(0,0,w,h);
+ g.fillStyle='#1c1511';g.fillRect(0,0,w,h);
+ for(const[a,b,s,c]of rocks){g.fillStyle=c>.5?'#2a201a':'#120d0a';g.fillRect(a*w,b*h,s*2,s);}
+ const top0=Y(.14)-rh/2,sky=g.createLinearGradient(0,0,0,top0);
+ sky.addColorStop(0,'#16243f');sky.addColorStop(1,'#4a6a8a');
+ g.fillStyle=sky;g.fillRect(0,0,w,top0-3);g.fillStyle='#3a2f26';g.fillRect(0,top0-3,w,3);
+ for(let l=0;l<W.levels;l++){const y=Y(.14+.24*l)-rh/2;                       // level bars + rotated labels
+  g.fillStyle=T[l].acc;g.fillRect(3,y,5,rh);g.fillRect(w-8,y,5,rh);
+  g.font='bold 10px system-ui';g.textAlign='center';
+  g.save();g.translate(17,y+rh/2);g.rotate(-Math.PI/2);g.fillText(`LEVEL ${l} · ${T[l].s}`,0,0);g.restore();
+  g.save();g.translate(w-14,y+rh/2);g.rotate(Math.PI/2);g.fillText(T[l].d,0,0);g.restore();g.textAlign='left';}
+ S.forEach((s,i)=>{const L=s.level,on=!dk(L),rw=X(s.w),x=X(s.x)-rw/2,y=Y(s.y)-rh/2,fl=Y(s.y)+rh/2-Y(.015),cx=X(s.x);
+  g.fillStyle=on?T[L].fill:'#0a0807';g.fillRect(x,y,rw,rh);
+  if(on){const gr=g.createRadialGradient(cx,y+4,2,cx,y+4,rw*.8);
+   gr.addColorStop(0,T[L].acc+'55');gr.addColorStop(1,T[L].acc+'00');g.fillStyle=gr;g.fillRect(x,y,rw,rh);
+   g.fillStyle=T[L].acc;g.fillRect(cx-8,y,16,3);}
+  g.fillStyle=T[L].wall;g.fillRect(x,fl,rw,3);
+  g.strokeStyle=T[L].wall;g.lineWidth=2;g.strokeRect(x,y,rw,rh);
+  if(!s.cols.some(c=>c<s.x+s.w*.1))decor(L,s.li,x,fl,rw,on);   // decor sits in the left half
+  g.font='9px system-ui';g.fillStyle=on?T[L].acc+'cc':'#444';g.fillText(s.name.toUpperCase(),x+4,y+13,rw-8);});
+ for(const b of stairBoxes()){const on=!dk(b.L),hgt=b.fl-b.top;                  // stairwells
+  if(b.open){g.fillStyle=on?'#0b0908':'#050403';g.fillRect(b.x,b.top,BQ,hgt);}
+  else{g.fillStyle='rgba(255,255,255,.07)';g.fillRect(b.x,b.top,BQ,hgt);
+   g.strokeStyle=T[b.L].wall;g.globalAlpha=on?.85:.3;g.lineWidth=1;g.beginPath();
+   for(let yy=b.top+7;yy<b.fl-2;yy+=7){g.moveTo(b.x,yy);g.lineTo(b.x+BQ,yy);}g.stroke();g.globalAlpha=1;}
+  g.strokeStyle=T[b.L].wall;g.lineWidth=2;g.strokeRect(b.x,b.top,BQ,hgt);half(b.x,b.top,b.fl,b.ei);}
+ for(const[a,b]of RUB){const x0=X(a.x+a.w/2),x1=X(b.x-b.w/2),y=Y(a.y)-rh/2,fl=Y(a.y)+rh/2-Y(.015);   // collapsed tunnel
+  g.fillStyle='#0d0907';g.fillRect(x0,y,x1-x0,rh);g.fillStyle='#4a3a2e';g.beginPath();g.moveTo(x0-6,fl+3);
+  for(let k=0;k<=6;k++)g.lineTo(x0+(x1-x0)*k/6,fl-rh*(.25+.35*Math.abs(Math.sin(k*2.3))));g.lineTo(x1+6,fl+3);g.fill();
+  g.save();g.translate((x0+x1)/2,y+rh*.35);g.rotate(-Math.PI/2);g.fillStyle='#a07a5c';g.font='bold 9px system-ui';
+  g.textAlign='center';g.fillText('COLLAPSED',0,3);g.restore();g.textAlign='left';}
+ if(hoverStair!==null){g.strokeStyle='#fff';g.lineWidth=2;g.setLineDash([4,3]);      // hovered stairwell
+  for(const r of stairRects())if(r.ei===hoverStair)g.strokeRect(r.x+1,r.y+1,r.w-2,r.h-2);g.setLineDash([]);}
+ E.forEach((e,i)=>{const[a,b]=EA[i],stt=snap.edges[i],lie=snap.lying.includes(e.id);
+  const col=lie?'#c06bff':stt==2?'#ff3b30':stt==1?'#e0a020':'#5fe08a';
+  if(e.kind==='tunnel'){const x0=X(a.x)+X(a.w)/2,x1=X(b.x)-X(b.w)/2,fl=Y(a.y)+rh/2-Y(.015);
+   g.fillStyle='#2b2520';g.fillRect(x0-1,fl-20,x1-x0+2,20);g.fillStyle=col;g.fillRect((x0+x1)/2-2,fl-17,4,5);}
+});
+ for(let l=0;l<W.levels;l++)if(dk(l)){const y=Y(.14+.24*l)-rh/2;
+  g.fillStyle='rgba(0,0,0,.78)';g.fillRect(0,y,w,rh);
+  g.fillStyle=(snap.tick%14<9)?'#ff4d3d':'#7a2a22';g.font='bold 18px system-ui';
+  g.fillText('POWER OUT — LEVEL '+l,w/2-110,y+rh/2);}
+ for(const s of st){s.inside=0;if(s.hide>0){s.hide--;s.mv=false;continue;}
+  const p=s.path[0];s.mv=false;if(!p)continue;s.inside=p[2]>0?1:0;               // walk along waypoints
+  const dx=(p[0]-s.x)*w,dy=(p[1]-s.y)*h,dd=Math.hypot(dx,dy);
+  if(dd<=SPD){s.x=p[0];s.y=p[1];s.path.shift();
+   if(p[2]===2){const n=s.path.shift();if(n){s.x=n[0];s.y=n[1];}s.hide=4;}}else{s.x+=dx/dd*SPD/w;s.y+=dy/dd*SPD/h;}
+  s.mv=true;}
+ const sz=figSize(),R=sz*.14;
+ st.forEach((s,i)=>{ph[i]=(ph[i]||0)+(s.mv?.45:0);amp[i]=(amp[i]||0)+((s.mv?1:0)-(amp[i]||0))*.2;});
+ g.lineCap='round';g.lineWidth=Math.max(1.4,sz*.1);
+ const cols=snap.colors||[],groups={};                       // one path per colour: still cheap with 300 figures
+ snap.residents.forEach((r,i)=>{const c=cols[i]||DEF;(groups[c]=groups[c]||[]).push(i);});
+ for(const part of [0,1])for(const c in groups){g.globalAlpha=part?.4:1;g.strokeStyle=g.fillStyle=c;g.beginPath();
+  for(const i of groups[c]){const r=snap.residents[i];
+   if(st[i].hide>0)continue;if((part===1)!==!!(dk(S[r[0]].level)||st[i].inside))continue;
+   const fx=X(st[i].x),fy=Y(st[i].y),a=amp[i]*sz*.28,sw=Math.sin(ph[i]);
+   const hip=fy-sz*.42,neck=fy-sz*.72;
+   g.moveTo(fx+R,fy-sz*.86);g.arc(fx,fy-sz*.86,R,0,6.283);
+   g.moveTo(fx,neck);g.lineTo(fx,hip);
+   g.moveTo(fx,hip);g.lineTo(fx+sw*a,fy);g.moveTo(fx,hip);g.lineTo(fx-sw*a,fy);
+   g.moveTo(fx,neck+sz*.06);g.lineTo(fx-sw*a,neck+sz*.3);g.moveTo(fx,neck+sz*.06);g.lineTo(fx+sw*a,neck+sz*.3);}
+  g.fill();g.stroke();}
+ g.globalAlpha=1;
+ if(sel!==null&&st[sel]&&!(st[sel].hide>0)){const s=st[sel],fx=X(s.x),fy=Y(s.y)-sz*.45;   // selected resident
+  g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(fx,fy,sz*.7,0,6.283);g.stroke();
+  g.fillStyle='#fff';g.font='bold 11px system-ui';g.textAlign='center';g.fillText('r'+sel,fx,fy-sz*.8);g.textAlign='left';}
+ parts=parts.filter(p=>(p.t+=.04)<1);
+ for(const p of parts){const a=S[p.a],b=S[p.b];g.fillStyle='#fff';g.beginPath();
+  g.arc(X(a.x+(b.x-a.x)*p.t),Y(a.y+(b.y-a.y)*p.t+FL-.02),3,0,6.283);g.fill();}
+}
+draw();
+</script>

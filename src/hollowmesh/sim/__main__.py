@@ -1,3 +1,6 @@
-"""`make demo` / `python -m hollowmesh.sim` — runs the simulated Hollow (H4–H6, real nodes from P6)."""
+"""`make demo` / `python -m hollowmesh.sim [--script] [--seed N]` — the simulated Hollow
+on real nodes (H4–H6 + P6), live at http://localhost:8000."""
 
-raise SystemExit("sim not implemented yet (H4–H6)")
+from .server import main
+
+main()

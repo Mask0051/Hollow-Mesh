@@ -28,13 +28,14 @@ Who calls what:
 
 from __future__ import annotations
 
+import json
 import random
 from collections.abc import Mapping
 from itertools import groupby
 from typing import TYPE_CHECKING, Any, Protocol, TypedDict
 
 from .node import IngestResult, VersionVector
-from .record import Record, canonical_json
+from .record import Record
 
 if TYPE_CHECKING:
     from .transport import Transport
@@ -83,6 +84,17 @@ class PublishingNode(SyncNode, Protocol):
 # --- batching -----------------------------------------------------------------------------
 
 
+def _wire_size(record: Record) -> int:
+    """Bytes this record takes in a message (its canonical JSON).
+
+    Same bytes as record.canonical_json, minus its validation: everything we send came
+    out of our own store, so it was already checked on the way in.
+    """
+    return len(
+        json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    )
+
+
 def batch(
     records: list[Record], *, limit: int = MAX_BATCH_RECORDS, max_bytes: int = MAX_BATCH_BYTES
 ) -> tuple[list[Record], bool]:
@@ -102,7 +114,7 @@ def batch(
         for q in list(queues):  # one record from each author per pass
             if len(out) >= limit:
                 break
-            n = len(canonical_json(q[0]))
+            n = _wire_size(q[0])
             if out and size + n > max_bytes:
                 return out, True  # the byte budget is full
             out.append(q.pop(0))
@@ -119,6 +131,10 @@ def _clean_vv(vv: Any) -> VersionVector:
     """A peer's version vector, keeping only well-formed entries (it's untrusted)."""
     if not isinstance(vv, dict):
         return {}
+    # Fast path: every key a str and every value exactly an int (not bool), checked at
+    # C speed. This is every honest peer, every time.
+    if set(map(type, vv)) <= {str} and set(map(type, vv.values())) <= {int}:
+        return vv
     return {
         a: n for a, n in vv.items()
         if isinstance(a, str) and isinstance(n, int) and not isinstance(n, bool)
