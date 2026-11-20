@@ -483,5 +483,31 @@
    "x": 0.301,
    "dir": 1
   }
+ ],
+ "recyclers": [
+  {
+   "id": "R0",
+   "level": 0,
+   "sector": "L0-S06",
+   "name": "Gate recycler"
+  },
+  {
+   "id": "R1",
+   "level": 1,
+   "sector": "L1-S07",
+   "name": "Homes recycler"
+  },
+  {
+   "id": "R2",
+   "level": 2,
+   "sector": "L2-S08",
+   "name": "Farms recycler"
+  },
+  {
+   "id": "R3",
+   "level": 3,
+   "sector": "L3-S00",
+   "name": "Deep recycler"
+  }
  ]
 }

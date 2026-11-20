@@ -1,8 +1,9 @@
 """P4 — Record payload schemas (Pydantic), Doc 2 §1.2.
 
 MVP: profile, post, help_request (optional reply_to).
-Target: health_report (P8, Countertally's input), checkin (encrypted, family only).
-Stretch: help_ack, water_report, outage_report, tunnel_blocked, offer, vouch.
+Target: health_report (P8, Countertally's input), checkin (encrypted, family only),
+water_report (a recycler's water looks/smells/tastes wrong, or made people sick).
+Stretch: help_ack, outage_report, tunnel_blocked, offer, vouch.
 Demo: beacon (our addition, not in Doc 2) — the dashboard colours every node holding it.
 
 Location is always level (0-3) + sector (e.g. "L2-S07"), never more precise.
@@ -81,6 +82,23 @@ class HealthReport(_Payload):
         return self
 
 
+class WaterReport(_Payload):
+    """Something is wrong with a recycler's water. You report the recycler on your own
+    level (the one your taps come from), so recycler, level and sector must agree."""
+
+    recycler: Annotated[str, Field(pattern=r"^R[0-3]$")]
+    level: Level
+    sector: Sector
+    issue: Literal["smell", "color", "taste", "illness"]
+    severity: Annotated[int, Field(ge=1, le=3)]
+
+    @model_validator(mode="after")
+    def _same_level(self) -> WaterReport:
+        if self.sector[1] != str(self.level) or self.recycler[1] != str(self.level):
+            raise ValueError("recycler, sector and level must be on the same level")
+        return self
+
+
 B64 = r"^[A-Za-z0-9+/]*={0,2}$"
 
 
@@ -126,5 +144,6 @@ PAYLOAD_SCHEMAS: dict[str, type[BaseModel]] = {
     "help_request": HelpRequest,
     "health_report": HealthReport,
     "checkin": Checkin,
+    "water_report": WaterReport,
     "beacon": Beacon,
 }

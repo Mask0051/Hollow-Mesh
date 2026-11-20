@@ -12,13 +12,15 @@ import pathlib
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 
 from .runner import DEMO_SCRIPT, Sim
 from .world import build_world
 
 STATIC = pathlib.Path(__file__).parent / "static"
+ICONS = pathlib.Path(__file__).resolve().parents[3] / "docs" / "icons"  # the team's designs
+ICON_NAMES = ("rat-king", "counter-tally", "tail-count", "taster", "sos")
 SEED = 42  # H10: the locked demo seed
 TICK_S = 0.1  # wall-clock seconds between ticks at 1x
 MAX_SPEED = 10.0
@@ -90,6 +92,12 @@ def create_app(
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(STATIC / "index.html")
+
+    @app.get("/icons/{name}.svg")
+    def icon(name: str) -> FileResponse:
+        if name not in ICON_NAMES or not (ICONS / f"{name}.svg").is_file():
+            raise HTTPException(status_code=404)  # only the known icons, never a path
+        return FileResponse(ICONS / f"{name}.svg", media_type="image/svg+xml")
 
     @app.get("/world.json")
     def world_json() -> JSONResponse:

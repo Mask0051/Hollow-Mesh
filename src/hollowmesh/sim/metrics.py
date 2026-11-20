@@ -10,7 +10,9 @@ Same seeds = same numbers, byte for byte: no wall-clock time goes into the file.
                   that existed at the moment of the heal.
     3. tamper     Lying relays on every stairwell: how many altered copies they sent, and how
                   many any phone accepted.
-    4. countertally  Two sim days of lung sickness: the Directorate's number and
+    4. water      The Deep's recycler breaks (Wi-Fi cut): how long until a phone on another
+                  level marks it unsafe, and how often a healthy recycler gets marked.
+    5. countertally  Two sim days of lung sickness: the Directorate's number and
                   Countertally's (on one phone), as a share of the real case count.
 
 1 tick = 10 sim-minutes. `python -m hollowmesh.sim.metrics --help` for options.
@@ -135,7 +137,28 @@ def tamper(seed: int) -> dict[str, Any]:
             "tampered_records_flagged": tamper_alerts}
 
 
-# ---- 4. Countertally ---------------------------------------------------------------------------
+# ---- 4. water ------------------------------------------------------------------------------
+
+def water(seed: int) -> dict[str, Any]:
+    sim = Sim(_WORLD, seed=seed, n_residents=RESIDENTS)
+    sim.net_cut = True
+    obs = next(r["id"] for r in sim.residents if sim._level(r) == 0)  # counted at the Gate
+    sim.observer = obs
+    for _ in range(5):
+        sim.tick()
+    sim.water_bad[3] = sim.t
+    flagged = None
+    false_alarm_ticks = 0
+    for t in range(1, DAY + 1):
+        sim.tick()
+        w = {x["id"]: x["status"] for x in sim.stats()["water"]}
+        if flagged is None and w["R3"] == "unsafe":
+            flagged = t
+        false_alarm_ticks += sum(w[k] == "unsafe" for k in ("R0", "R1", "R2"))
+    return {"t_flagged": flagged, "false_unsafe_ticks": false_alarm_ticks}
+
+
+# ---- 5. Countertally ---------------------------------------------------------------------------
 
 def countertally(seed: int, wifi: bool) -> dict[str, Any]:
     sim = Sim(_WORLD, seed=seed, n_residents=RESIDENTS)
@@ -178,7 +201,8 @@ def _summ(values: list[Any], minutes: bool = False) -> dict[str, Any]:
 
 
 def _call(job: tuple[str, tuple[Any, ...]]) -> dict[str, Any]:
-    fn = {"delivery": delivery, "heal": heal, "tamper": tamper, "countertally": countertally}
+    fn = {"delivery": delivery, "heal": heal, "tamper": tamper, "water": water,
+          "countertally": countertally}
     return fn[job[0]](*job[1])
 
 
@@ -198,6 +222,7 @@ def run_all(seeds: int, workers: int | None = None) -> dict[str, Any]:
     jobs += [("delivery", (s, w, off, dd)) for _, w, off, dd in DELIVERY for s in ss]
     jobs += [("heal", (s,)) for s in ss]
     jobs += [("tamper", (s,)) for s in ss]
+    jobs += [("water", (s,)) for s in ss]
     jobs += [("countertally", (s, w)) for w in (True, False) for s in ss]
     with ProcessPoolExecutor(workers) as pool:
         res = list(pool.map(_call, jobs))  # results come back in job order: deterministic
@@ -208,7 +233,7 @@ def run_all(seeds: int, workers: int | None = None) -> dict[str, Any]:
                   "tick_minutes": MIN_PER_TICK, "time_units": "sim-minutes",
                   "note": "Real protocol (signed feeds, verified ingest, gossip); the sim decides "
                           "only who can reach whom. Same seeds give the same file."},
-        "delivery": {}, "heal": {}, "tamper": {}, "countertally": {}}
+        "delivery": {}, "heal": {}, "tamper": {}, "water": {}, "countertally": {}}
     for name, w, off, dd in DELIVERY:
         runs = [next(it) for _ in ss]
         out["delivery"][name] = {
@@ -228,6 +253,11 @@ def run_all(seeds: int, workers: int | None = None) -> dict[str, Any]:
     out["tamper"] = {"altered_copies_sent": sum(r["altered_sent"] for r in runs),
                      "altered_copies_accepted": sum(r["altered_accepted"] for r in runs),
                      "tampered_records_flagged": sum(r["tampered_records_flagged"] for r in runs)}
+    runs = [next(it) for _ in ss]
+    out["water"] = {"setup": "Deep recycler breaks, Wi-Fi cut, counted on a phone on level 0",
+                    "minutes_to_unsafe": _summ([r["t_flagged"] for r in runs], minutes=True),
+                    "healthy_recycler_marked_unsafe_minutes": sum(r["false_unsafe_ticks"]
+                                                                  for r in runs) * MIN_PER_TICK}
     for w in (True, False):
         runs = [next(it) for _ in ss]
         out["countertally"]["wifi_on" if w else "network_cut"] = {
@@ -274,6 +304,10 @@ def summary(r: dict[str, Any]) -> str:
     t = r["tamper"]
     lines += [(f"Lying relays: {t['altered_copies_sent']} altered copies sent, "
                f"{t['altered_copies_accepted']} accepted, {t['tampered_records_flagged']} records flagged")]
+    wt = r["water"]
+    lines += [(f"Water: the Deep's broken recycler marked unsafe on a Gate phone after "
+               f"{_min(wt['minutes_to_unsafe'])}; healthy recyclers marked unsafe for "
+               f"{wt['healthy_recycler_marked_unsafe_minutes']} min in total")]
     for k, c in r["countertally"].items():
         lines += [(f"Countertally ({k}): sees {_pct(c['countertally_share_of_truth'])} of real cases, "
                    f"Directorate {_pct(c['official_share_of_truth'])}; first 10 cases seen after "

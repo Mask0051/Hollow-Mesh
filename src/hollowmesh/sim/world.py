@@ -45,6 +45,10 @@ STAIRS = [
     (2, 2, 1, "a"),  # the only way in or out of the Deep
 ]
 
+# One water recycler per level: (room index it sits in, name). Water reports name it by id.
+RECYCLERS = [(6, "Gate recycler"), (7, "Homes recycler"), (8, "Farms recycler"),
+             (0, "Deep recycler")]
+
 
 def sector_id(level: int, i: int) -> str:
     return f"L{level}-S{i:02d}"
@@ -81,7 +85,9 @@ def build_world() -> dict:
         edges.append({"id": f"ST-{lv}-{lv + 1}-{k}", "a": sector_id(lv, up),
                       "b": sector_id(lv + 1, down), "kind": "stairwell",
                       "x": round((lo + hi) / 2, 4), "dir": 1 if n % 2 else -1})
-    return {"levels": LEVELS, "sectors": sectors, "edges": edges}
+    recyclers = [{"id": f"R{lv}", "level": lv, "sector": sector_id(lv, i), "name": name}
+                 for lv, (i, name) in enumerate(RECYCLERS)]
+    return {"levels": LEVELS, "sectors": sectors, "edges": edges, "recyclers": recyclers}
 
 
 if __name__ == "__main__":

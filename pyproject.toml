@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hollowmesh"
-version = "0.1.0"
+version = "1.0.0"
 description = "Rat King: signed-feed gossip mesh for the Hollow, plus Countertally"
 requires-python = ">=3.11"
 

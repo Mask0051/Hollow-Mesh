@@ -1,7 +1,7 @@
 # Uses the project venv if it exists, so `make test` works without activating it.
 PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: venv install test chaos check lint fix demo sim node metrics clean
+.PHONY: venv install test check lint fix demo sim node metrics clean
 
 # One-time setup: create .venv and install everything (editable).
 venv:
@@ -12,13 +12,9 @@ venv:
 install:
 	$(PY) -m pip install -e ".[dev,http,sim]"
 
-# P1-P5: record, fake, node, types, sync (chaos tests excluded, see addopts)
+# Everything: protocol, services, sim, metrics (fast; ~15 s)
 test:
 	$(PY) -m pytest
-
-# P10: 100 random partition/crash schedules must converge
-chaos:
-	$(PY) -m pytest -m chaos
 
 # Run before opening a PR
 check: lint test
@@ -42,7 +38,7 @@ metrics:
 	$(PY) -m hollowmesh.sim.metrics --out results.json
 	$(PY) -m hollowmesh.sim.plots results.json docs/img
 
-# P11: a single node over HTTP
+# P11 (not built for this submission): a single node over HTTP
 node:
 	$(PY) -m hollowmesh.nodeapp
 

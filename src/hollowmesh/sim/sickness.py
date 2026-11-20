@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 BASE_P = (0.0001, 0.0003, 0.0006, 0.002)  # per resident per tick, by level (L0..L3)
 SPREAD = 0.004  # extra chance per tick x share of the room that is sick
+WATER_P = 0.002  # extra chance per tick while your level's recycler is broken
 SICK_TICKS = (144, 432)  # ill for 1-3 sim days
 REPORT_P = 0.85  # share of sick households that file a report
 REPORT_DELAY = (1, 18)  # ticks between falling ill and filing (up to 3 hours)
@@ -45,6 +46,7 @@ class Case:
     sym: list[str]
     ends: int  # tick they recover
     report_at: int | None  # tick they file, or None if they never do
+    cause: str = "air"  # "air" (the lung sickness) or "water" (a broken recycler)
 
 
 class Sickness:
@@ -61,16 +63,18 @@ class Sickness:
         for r in sim.residents:
             if r["id"] in self.had:
                 continue
-            p = BASE_P[sim.level_of[r["sec"]]] + SPREAD * ill[r["sec"]] / crowd[r["sec"]]
+            lv = sim.level_of[r["sec"]]
+            water = WATER_P if lv in sim.water_bad else 0.0
+            p = BASE_P[lv] + SPREAD * ill[r["sec"]] / crowd[r["sec"]] + water
             if rng.random() < p:
-                self._fall_ill(sim, r)
+                self._fall_ill(sim, r, "water" if water and rng.random() < water / p else "air")
         for c in self.cases:
             if c.report_at == t:  # filed from where they fell ill
                 sim._to_send.append((c.resident, "health_report", {
                     "level": c.level, "sector": c.sector, "sym": c.sym,
                     "severity": c.severity, "sick": c.sick, "onset_day": c.onset_day}))
 
-    def _fall_ill(self, sim: Sim, r: dict) -> None:
+    def _fall_ill(self, sim: Sim, r: dict, cause: str = "air") -> None:
         t, rng = sim.t, sim.rng
         sym = ["cough", *[s for s in SYMS if rng.random() < 0.4]]
         reports = rng.random() < REPORT_P
@@ -78,7 +82,7 @@ class Sickness:
                  sector=sim.sectors[r["sec"]]["id"], sick=rng.choice(HOUSEHOLD),
                  severity=rng.choice((1, 1, 2, 2, 3)), sym=sym,
                  ends=t + rng.randint(*SICK_TICKS),
-                 report_at=t + rng.randint(*REPORT_DELAY) if reports else None)
+                 report_at=t + rng.randint(*REPORT_DELAY) if reports else None, cause=cause)
         self.cases.append(c)
         self.had[r["id"]] = c
 
