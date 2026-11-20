@@ -35,6 +35,10 @@ levels. Each family shares a secret key. A check-in is sealed with it and publis
 the member's PRIVATE feed: every phone carries it, only family can read it. Phones check
 in now and then, and much more often when their level loses power.
 
+Water (prompt #4): each level drinks from one recycler. When one breaks, residents on
+that level notice (smell, colour, taste, or getting sick) and file a water_report, once
+each per failure; a few false alarms happen everywhere. Bad water also makes people sick.
+
 Phones (demo): click a resident to post or send a beacon colour from their node. Each
 resident is drawn in the colour of the newest beacon their own node holds.
 
@@ -57,6 +61,7 @@ from ..protocol.transport.memory import MemoryTransport
 from ..protocol.types import PAYLOAD_SCHEMAS, CheckinBody
 from ..services.checkin import family_view, seal
 from ..services.countertally import tally
+from ..services.water import water_status
 from .sickness import Sickness
 
 TICK_MS = 600_000  # 1 tick = 10 sim-minutes; record ts is sim time, never wall time
@@ -67,7 +72,9 @@ MAX_PARTICLES = 60  # cross-sector message particles per snapshot
 SHOWN_ALERTS = ("tamper", "fork")  # gaps are routine during gossip; counted, not shown
 DEFAULT_COLOR = "#ffe27a"  # everyone's colour until a beacon reaches them
 FEED_LEN = 40  # newest records shown on a resident's phone (per tab)
-PHONE_TABS = ("help_request", "health_report", "checkin")  # posts + colours live in All
+PHONE_TABS = ("help_request", "health_report", "water_report", "checkin")  # posts+colours: All
+WATER_NOTICE_P, WATER_FALSE_P = 0.006, 0.00003  # per resident per tick: bad water / false alarm
+WATER_ISSUES = (("smell", 35), ("color", 30), ("taste", 25))  # what people notice first
 CHECKIN_P, CHECKIN_DARK_P = 0.0015, 0.02  # per resident per tick: normally / power out
 FAMILY_SIZES = (2, 3, 3, 4)
 SOS_SHOWN, SOS_MAX = 144, 6  # map markers: SOS calls from the last sim day, newest 6
@@ -108,6 +115,7 @@ DEMO_SCRIPT: dict[int, list[dict[str, Any]]] = {  # tick -> commands (H10)
     140: [{"cmd": "heal"}],
     160: [{"cmd": "tamper", "id": "ST-0-1-b"}, {"cmd": "inject", "sector": "L1-S05"}],
     220: [{"cmd": "heal"}],
+    230: [{"cmd": "water", "level": 3, "ok": False}],  # the Deep's recycler fails
 }
 
 
@@ -182,6 +190,8 @@ class Sim:
         self.mesh_off = False  # Rat King (the mesh) switched off: no mesh links at all
         self.dark: list[int] = []
         self.lying: list[str] = []  # edge ids with a lying relay on them
+        self.recyclers: list[dict[str, Any]] = world.get("recyclers", [])
+        self.water_bad: dict[int, int] = {}  # level -> tick its recycler broke
         self.phones_off: list[bool] = [False] * n_residents  # dead phones (metrics: P9)
         self.altered_sent = 0  # tampered copies the lying relays forwarded
 
@@ -332,12 +342,25 @@ class Sim:
                         and set(color[1:].lower()) <= _HEX
                         and isinstance(label, str) and len(label) <= 40):
                     self._to_send.append((i, "beacon", {"color": color.lower(), "label": label}))
+        elif k == "water":  # {"cmd": "water", "level": 3, "ok": false} breaks that recycler
+            lv, ok = c.get("level"), c.get("ok")
+            if (isinstance(lv, int) and not isinstance(lv, bool) and 0 <= lv < self.levels
+                    and isinstance(ok, bool)):
+                if ok:
+                    self.water_bad.pop(lv, None)
+                elif lv not in self.water_bad:
+                    self.water_bad[lv] = self.t
+        elif k == "water_report":  # from a phone: {"resident", "issue", "severity"}
+            i = c.get("resident")
+            if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < len(self.residents):
+                self._queue_water(self.residents[i], c.get("issue"), c.get("severity"))
         elif k == "observe":  # dashboard: run Countertally on this resident's phone
             i = c.get("resident")
             if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < len(self.residents):
                 self.observer = i
         elif k == "heal":
             self.net_cut, self.mesh_off, self.dark, self.lying = False, False, [], []
+            self.water_bad = {}
             for e in self.edges:
                 e["up"] = True
 
@@ -357,6 +380,15 @@ class Sim:
                     r["sec"] = self.rng.choice(opts)
         if self.sickness:
             self.sickness.step(self)  # queues the health reports that are due
+        for r in self.residents:  # water: people on a bad level notice; rare false alarms
+            lv = self._level(r)
+            broke = self.water_bad.get(lv)
+            if broke is not None and r.get("water_seen") != (lv, broke):
+                if self.rng.random() < WATER_NOTICE_P:
+                    r["water_seen"] = (lv, broke)  # one report per person per failure
+                    self._queue_water(r, self._water_issue(r), self.rng.choice((2, 2, 3)))
+            elif self.rng.random() < WATER_FALSE_P:
+                self._queue_water(r, self._water_issue(r), 1)
         for r in self.residents:  # family check-ins: far more often when the lights go out
             dark = self._level(r) in self.dark
             if self.rng.random() < (CHECKIN_DARK_P if dark else CHECKIN_P):
@@ -475,6 +507,24 @@ class Sim:
         except ValidationError:
             return
         self._to_send.append((i, type, fields))
+
+    def _water_issue(self, r: dict[str, Any]) -> str:
+        case = self.sickness.had.get(r["id"]) if self.sickness else None
+        if case is not None and case.ends > self.t and case.cause == "water":
+            return "illness"
+        names, weights = zip(*WATER_ISSUES, strict=True)
+        return self.rng.choices(names, weights)[0]
+
+    def _queue_water(self, r: dict[str, Any], issue: Any, severity: Any) -> None:
+        """A water_report about the recycler on r's level, from where r is now."""
+        lv = self._level(r)
+        fields = {"recycler": f"R{lv}", "level": lv, "sector": self.sectors[r["sec"]]["id"],
+                  "issue": issue, "severity": severity}
+        try:
+            PAYLOAD_SCHEMAS["water_report"].model_validate(fields)
+        except ValidationError:
+            return
+        self._to_send.append((r["id"], "water_report", fields))
 
     def _auto_checkin(self, r: dict[str, Any], dark: bool) -> dict[str, Any]:
         sk = self.sickness
@@ -597,7 +647,8 @@ class Sim:
                 "peers": len(self._links.get(node.node_id, [])), "color": self.color_of(vv),
                 "held": sum(vv.values()), "total": self.total_published, "feed": feed,
                 "tabs": tabs, "counts": counts, "day": self.day,
-                "family": family, "sealed": sealed}
+                "family": family, "sealed": sealed,
+                "water": water_status(everything, self.t * TICK_MS, self.recyclers, TICK_MS)}
 
     def stats(self) -> dict[str, Any]:
         """Countertally's split screen (Doc 2 §1.6 "stats"), all lists indexed by level.
@@ -606,8 +657,9 @@ class Sim:
         official is the Directorate's undercount; truth is for judges and eval only.
         """
         r = self.residents[self.observer]
-        out = tally(r["node"].all_records(), self.t * TICK_MS, self.levels,
-                    len(self.sectors), TICK_MS)
+        recs = r["node"].all_records()
+        out = tally(recs, self.t * TICK_MS, self.levels, len(self.sectors), TICK_MS)
+        out["water"] = water_status(recs, self.t * TICK_MS, self.recyclers, TICK_MS)
         sk, day = self.sickness, self.day
         out["official"] = sk.official(self.t, day, self.levels) if sk else [0] * self.levels
         out["truth"] = sk.truth(self.t, day, self.levels) if sk else [0] * self.levels
@@ -658,4 +710,5 @@ class Sim:
                 "probeLevels": sorted(reached), "alerts": self.events, "lying": self.lying,
                 "sick": self.sickness.sick_now(self.t) if self.sickness else [],
                 "sos": self._sos_markers(),
+                "water_bad": sorted(self.water_bad),
                 "stats": self.stats()}

@@ -1,0 +1,15 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+	<defs><filter id="light" x="-15%" y="-15%" width="130%" height="130%"><feMorphology in="SourceAlpha" operator="dilate" radius="12" result="grow"/><feFlood flood-color="#1a1a19"/><feComposite in2="grow" operator="in" result="outline"/><feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0.94  0 0 0 0 0.937  0 0 0 0 0.925  0 0 0 1 0" result="fill"/><feMerge><feMergeNode in="outline"/><feMergeNode in="fill"/></feMerge></filter>
+		<g id="flag">
+			<!-- pole, cap and foot -->
+			<rect x="104" y="74" width="34" height="378" rx="10"/>
+			<circle cx="121" cy="64" r="26"/>
+			<rect x="66" y="440" width="110" height="30" rx="10"/>
+			<!-- waving flag with a "!" cut out (evenodd) -->
+			<path fill-rule="evenodd" d="M138,96 C218,58 300,138 440,92 L440,300 C300,346 218,266 138,304 Z
+				M282,132 h44 a10,10 0 0 1 10,10 l-8,104 a10,10 0 0 1 -10,9 h-28 a10,10 0 0 1 -10,-9 l-8,-104 a10,10 0 0 1 10,-10 Z
+				M304,268 a22,22 0 1 1 0,44 a22,22 0 1 1 0,-44 Z"/>
+		</g>
+	</defs>
+	<use filter="url(#light)" href="#flag" transform="translate(56 56) scale(0.78)"/>
+</svg>

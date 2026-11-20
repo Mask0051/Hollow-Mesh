@@ -7,6 +7,14 @@ body{display:flex;flex-direction:column}
 header{background:var(--panel);border-bottom:1px solid var(--line);padding:7px 12px;display:flex;flex-direction:column;gap:7px;z-index:6}
 .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .grow{flex:1}
+.ico{display:inline-block;width:1.25em;height:1.25em;flex:none;vertical-align:-.28em;background:currentColor;
+ -webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat}
+.i-rk{--i:url(/icons/rat-king.svg)}.i-ct{--i:url(/icons/counter-tally.svg)}.i-tc{--i:url(/icons/tail-count.svg)}.i-ta{--i:url(/icons/taster.svg)}.i-sos{--i:url(/icons/sos.svg)}
+button.act .ico{width:16px;height:16px}
+.brand .ico{width:26px;height:26px;margin-right:6px;vertical-align:-.45em}
+.ct-h .ico{width:22px;height:22px;color:var(--accent);margin-right:5px;vertical-align:-.35em}
+#ct h4 .ico{width:15px;height:15px;margin-right:3px;vertical-align:-.3em}
+.ph-tabs .ic.ico{width:17px;height:17px;margin-bottom:1px}
 .brand{font-weight:700;font-size:15px;letter-spacing:.03em;color:var(--accent);margin-right:6px}
 .brand small{color:var(--mute);font-weight:400;font-size:12px;margin-left:4px}
 .group{display:flex;align-items:center;gap:5px;padding:3px 5px 3px 10px;border:1px solid var(--line);border-radius:10px;background:var(--well)}
@@ -72,6 +80,12 @@ kbd{font:11px ui-monospace,monospace;border:1px solid #4a3d33;border-bottom-widt
 #ct h4{margin:2px 0 0;font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--mute)}
 .flag{display:flex;gap:6px;align-items:baseline;font-size:12px;padding:3px 0;border-bottom:1px dashed #2e251e}
 .flag .n{margin-left:auto;font-variant-numeric:tabular-nums}.flag .p{color:var(--mute);font-size:10.5px;min-width:52px;text-align:right}
+.wrow{display:flex;gap:7px;align-items:baseline;font-size:12px;padding:3px 0;border-bottom:1px dashed #2e251e}
+.wrow .d{width:9px;height:9px;border-radius:50%;flex:none;align-self:center}.wrow .s{margin-left:auto;font-size:11px;font-weight:600}
+.wrow small{display:block;color:var(--mute);font-size:10.5px}
+.msg.wr{background:#10263a;border:1px solid #24527a}.msg.mine.wr{background:#143450}
+.ph-water{display:flex;flex-direction:column;gap:4px;margin-bottom:4px}
+.ph-water .wrow{background:#1a1a1a;border:1px solid #2c2c2c;border-radius:9px;padding:5px 8px}.ph-water .wrow.me{border-color:#4a6a8a}
 .ct-note{font-size:10.5px;color:var(--mute);margin:auto 0 0;line-height:1.4}
 canvas{width:100%;height:100%;display:block}
 #toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);max-width:min(720px,calc(100% - 340px));z-index:5;
@@ -143,7 +157,7 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
 </style>
 <header>
  <div class="row">
-  <span class="brand">RAT KING<small>live sim of the Hollow</small></span>
+  <span class="brand"><i class="ico i-rk"></i>RAT KING<small>live sim of the Hollow</small></span>
   <span class="stat" title="How many of all records every phone holds, on average">Synced
    <span class="bar"><i id="syncbar"></i></span><span id="sync">–</span></span>
   <span class="stat" title="Levels the latest &quot;SOS from Deep&quot; post has reached">SOS reached <span id="sos"></span></span>
@@ -156,6 +170,8 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
    <button title="Faster (] or +)" onclick="nudge(1)">+</button>
   </div>
   <span id="clock"></span>
+  <button id="bct" class="sw" aria-pressed="true" title="Countertally: sickness counted from residents' signed health reports, next to the Directorate's number (C)"
+   onclick="toggleCT()"><span class="tr"></span><i class="ico i-ct"></i>Countertally<span class="st">ON</span></button>
   <button title="Help (?)" onclick="toggleHelp()">?</button>
  </div>
  <div class="row">
@@ -171,11 +187,10 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
     onclick="send({cmd:'relay',on:!(snap&&snap.lying.length)})"><span class="tr"></span>Lying relay<span class="st">OFF</span></button>
   </div>
   <div class="group"><span class="lbl">Actions</span>
-   <button class="act" title="A resident on the deepest level (L3) posts an urgent message" onclick="send({cmd:'inject',sector:'L3-S04'})">📣 SOS from Deep</button>
+   <button class="act" title="A resident on the deepest level (L3) posts an urgent message" onclick="send({cmd:'inject',sector:'L3-S04'})"><i class="ico i-sos" style="color:#ff6a4d"></i>SOS from Deep</button>
+   <button id="bwater" class="act" title="Break or fix the Deep's water recycler" onclick="send({cmd:'water',level:3,ok:!!(snap&&snap.water_bad.includes(3))})">💧 Break Deep water</button>
    <button class="act" title="Turn everything back on: networks, power, stairwells, no liars" onclick="send({cmd:'heal'})">↺ Reset all</button>
   </div>
-  <button id="bct" class="sw" aria-pressed="true" title="Countertally: sickness counted from residents' signed health reports, next to the Directorate's number (C)"
-   onclick="toggleCT()"><span class="tr"></span>📊 Countertally<span class="st">ON</span></button>
  </div>
 </header>
 <div id="main"><div id="wrap"><canvas id="c"></canvas>
@@ -183,9 +198,10 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
   <button title="Dismiss" onclick="$('toast').hidden=true">×</button></div>
  <div id="help" hidden><button class="x" title="Close (Esc)" onclick="toggleHelp(false)">×</button>
   <h3>How to use the sim</h3>
-  <ul><li><b>Click a person</b> to use their phone. <b>All</b> shows everything it holds and lets you post or send a colour to everyone; SOS, Health and Family each show and send one kind of message. Watch it spread.
+  <ul><li><b>Click a person</b> to use their phone. <b>All</b> shows everything it holds and lets you post or send a colour to everyone; SOS, Countertally (health reports), Taster (water) and Tail Count (family) each show and send one kind of message. Watch it spread.
+   <b>Taster</b>: a 💧 on each level's water recycler turns amber when someone reports it and red (DON'T DRINK) once 3+ households do.
    A pulsing <b>SOS</b> marks where a call for help came from; its four pips light up as each level receives it (hover for details, click for the sender's phone).
-   Dashed lines join them to their family; <b>Family</b> check-ins are encrypted so only relatives can read them.
+   Dashed lines join them to their family; <b>Tail Count</b> check-ins are encrypted so only relatives can read them.
    Each person turns the colour of the newest beacon <i>their</i> phone has received.</li>
    <li><b>Click a stairwell</b> to close or reopen it. Closed stairwells carry no messages.</li>
    <li><b>Networks</b>: switch the Directorate's Wi-Fi and Rat King (our mesh) on/off to compare them.</li>
@@ -224,6 +240,11 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
     <option value="2">2 days ago</option><option value="3">3 days ago</option><option value="7">a week ago</option></select>
     <button class="send">Send report</button></div>
   </form>
+  <form id="pwater" class="cmp" hidden>
+   <div class="r"><span class="seg" id="wiss"></span></div>
+   <div class="r">Severity <span class="seg" id="wsev"></span><span class="grow"></span><button class="send">Report water</button></div>
+   <div class="r" style="font-size:10.5px;color:#777" id="wwhich">About the recycler on your level</div>
+  </form>
   <form id="pfam" class="cmp" hidden>
    <div class="r"><span class="seg" id="cstat"></span></div>
    <div class="r"><input id="cnote" class="grow" maxlength="140" placeholder="Note for your family (optional)" autocomplete="off">
@@ -233,14 +254,15 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
  </div>
 </div>
 <aside id="ct" aria-label="Countertally">
- <div class="ct-h"><b>COUNTERTALLY</b><span class="ct-sub">Lung sickness, cases in the last 14 days</span></div>
+ <div class="ct-h"><i class="ico i-ct"></i><b>COUNTERTALLY</b><span class="ct-sub">Lung sickness, cases in the last 14 days</span></div>
  <div class="ct-obs" id="ctobs"></div>
  <div class="ct-key"><span class="k off"></span>Directorate<span class="k ours"></span>Countertally
   <label title="Ground truth from the sim. Nobody inside the Hollow can see this."><input type="checkbox" id="cttruth">truth</label></div>
  <div id="ctlv"></div>
  <div class="ct-tot" id="cttot"></div>
  <h4>Hotspots</h4><div id="ctflags"></div>
- <p class="ct-note"><b>Directorate</b>: hears about ~1 in 4 cases, 12 h late.<br><b>Countertally</b>: signed health reports
+ <h4><i class="ico i-ta"></i>Taster · water</h4><div id="ctwater"></div>
+ <p class="ct-note"><b>Directorate</b>: hears about ~1 in 4 cases, 12 h late.<br><b>Taster</b>: a recycler is unsafe once 3+ households report it within 12 h.<br><b>Countertally</b>: signed health reports
   that reached this phone over the mesh. One per household per day; a room is only named once 3+ households report.
   Hatched = no recent data from that level, so the number is a floor.</p>
 </aside>
@@ -295,6 +317,8 @@ function hud(){const sp=snap.speed||0;if(sp>0)lastSpeed=sp;
   :'A relay on a stairwell that rewrites messages it carries. Receivers catch it.';
  lvB.forEach((b,l)=>{const out=snap.dark.includes(l);b.classList.toggle('out',out);
   b.title=`Level ${l} (${T[l].s.toLowerCase()}): ${out?'POWER OUT (no Wi-Fi, mesh only). Click to restore':'powered. Click to cut power (kills Wi-Fi there)'}`;});
+ const wb=(snap.water_bad||[]).includes(3);$('bwater').textContent=wb?'💧 Fix Deep water':'💧 Break Deep water';
+ $('bwater').title=wb?'The Deep\'s recycler is broken (sim truth). Click to fix it':'Break the Deep\'s water recycler: residents there start noticing and reporting it';
  const reached=snap.probeLevels||[];sosP.forEach((p,l)=>p.classList.toggle('hit',reached.includes(l)));
  const pc=Math.round(snap.syncPct*100);$('sync').textContent=pc+'%';$('syncbar').style.width=pc+'%';
  $('play').textContent=sp>0?'❚❚':'▶';$('play').title=sp>0?'Pause (Space)':'Play (Space)';
@@ -349,7 +373,17 @@ function renderStats(s){const truth=$('cttruth').checked,o=s.observer;
  if(!s.flags.length)fl.appendChild(el('div','flag',''+(sc?'No room stands out yet':'No reports yet')));
  for(const f of s.flags){const d=el('div','flag');d.append(el('span',null,'🔴 '+f.name),el('span','p',f.sector),
   el('span','n',f.cases+' sick'),el('span','p',f.p<0.001?'p<0.001':'p='+f.p.toFixed(3)));
-  d.title=`${f.households} households reported from ${f.name}: far more than an average room`;fl.appendChild(d);}}
+  d.title=`${f.households} households reported from ${f.name}: far more than an average room`;fl.appendChild(d);}
+ $('ctwater').replaceChildren(...(s.water||[]).map(x=>waterRow(x,false)));}
+// ---- Water watch: recycler status as one phone sees it ----
+const WST={ok:['OK','#6cc7e8'],watch:['Watch','#ffb347'],unsafe:["DON'T DRINK",'#ff3b30']};
+const ISS={smell:'smell',color:'colour',taste:'taste',illness:'made people sick'};
+const issueTxt=x=>Object.entries(x.issues).map(([k,n])=>`${ISS[k]||k} ${n}`).join(', ');
+function waterRow(x,me){const r=el('div','wrow'+(me?' me':'')),d=el('span','d'),c=el('div'),[st,col]=WST[x.status];
+ d.style.background=col;c.appendChild(el('span',null,x.name+(me?' (your taps)':'')));
+ if(x.households)c.appendChild(el('small',null,`${x.households} household${x.households>1?'s':''}: ${issueTxt(x)}`+
+  (x.illness_since?` · ${x.illness_since} sick on L${x.level} since`:'')));
+ const sv=el('span','s',st);sv.style.color=col;r.append(d,c,sv);return r;}
 
 // ---- Phones: click a resident to see and use THEIR node ----
 // Their colour = the newest beacon their own node holds (server decides; we just draw it).
@@ -358,13 +392,13 @@ const colorName=c=>(COLORS.find(x=>x[1]===c)||[c])[0];
 let sel=null,phoneBusy=false,feedKey='',ptab='all',lastP=null;
 // One tab per record type. Each has its own feed and its own way to send.
 const TABS=[['all','📥','All','pform pcolors','Nothing received yet'],
- ['help_request','🆘','SOS','psos','No SOS calls yet'],
- ['health_report','🩺','Health','phealth','No health reports yet'],['checkin','👪','Family','pfam','No check-ins from your family yet']];
+ ['help_request','i-sos','SOS','psos','No SOS calls yet'],
+ ['health_report','i-ct','Countertally','phealth','No health reports yet'],['water_report','i-ta','Taster','pwater','No water reports yet'],['checkin','i-tc','Tail Count','pfam','No check-ins from your family yet']];
 const tabB=TABS.map(([id,ic,name])=>{const b=el('button');b.setAttribute('role','tab');b.title=name;
- b.append(el('span','ic',ic),el('span',null,name),el('span','n',''));b.onclick=()=>setTab(id);$('ptabs').appendChild(b);return b;});
+ b.append(ic.startsWith('i-')?el('i','ic ico '+ic):el('span','ic',ic),el('span',null,name),el('span','n',''));b.onclick=()=>setTab(id);$('ptabs').appendChild(b);return b;});
 function setTab(id){ptab=id;feedKey='';const form=TABS.find(t=>t[0]===id)[3]||'pform';
  TABS.forEach((t,i)=>tabB[i].setAttribute('aria-selected',t[0]===id));
- for(const f of['pform','pcolors','psos','phealth','pfam'])$(f).hidden=!form.split(' ').includes(f);   // All: post + colours
+ for(const f of['pform','pcolors','psos','phealth','pwater','pfam'])$(f).hidden=!form.split(' ').includes(f);   // All: post + colours
  if(lastP)renderPhone(lastP);}
 // small controls: segmented 1-2-3 and on/off chips
 function seg(id,vals,init){let v=init;const bs=vals.map(x=>{const b=el('button',null,String(x));b.type='button';
@@ -373,6 +407,9 @@ function seg(id,vals,init){let v=init;const bs=vals.map(x=>{const b=el('button',
 const urg=seg('surg',[1,2,3],2),sev=seg('hsev',[1,2,3],1);
 const STAT={ok:['OK','#5fe08a'],hurt:['Hurt','#ffb347'],need_help:['Need help','#ff3b30'],moving:['Moving','#6cc7e8']};
 const cstat=seg('cstat',Object.keys(STAT),'ok');
+const wiss=seg('wiss',['smell','color','taste','illness'],'smell'),wsev=seg('wsev',[1,2,3],2);
+$('wiss').querySelectorAll('button').forEach(b=>{b.textContent={smell:'Smell',color:'Colour',taste:'Taste',illness:'Made us sick'}[b.textContent];});
+$('pwater').onsubmit=e=>{e.preventDefault();if(sel!==null)send({cmd:'water_report',resident:sel,issue:wiss(),severity:wsev()});};
 $('cstat').querySelectorAll('button').forEach((b,i)=>{b.textContent=STAT[Object.keys(STAT)[i]][0];});
 const SYM=['cough','fever','breath','chest'],symOn=new Set(['cough']);
 SYM.forEach(n=>{const b=el('button',null,n==='breath'?'short of breath':n==='chest'?'chest pain':n);b.type='button';
@@ -408,13 +445,15 @@ function famCards(p){const box=el('div','fam');
   if(f.note)col.appendChild(el('div','nt','“'+f.note+'”'));
   c.append(dot,col);if(f.status)c.appendChild(el('span','ag',ago(f.tick)));box.appendChild(c);}
  return box;}
-function bubble(f,day){const q=f.p||{},cls=f.type==='help_request'?' sos':f.type==='health_report'?' hr':f.type==='checkin'?' ci':'';
+function bubble(f,day){const q=f.p||{},cls=f.type==='help_request'?' sos':f.type==='health_report'?' hr':f.type==='checkin'?' ci':f.type==='water_report'?' wr':'';
  const m=el('div','msg'+(f.mine?' mine':'')+cls);
  m.appendChild(el('div','meta',`${f.mine?'you':f.from} · t${f.tick}${f.sector?' · '+f.sector:''}`));
  if(f.type==='beacon'){const b=el('div','body'),d=el('span','dot');d.style.background=f.color;
   b.append(d,el('span',null,'sent '+(f.label||colorName(f.color))));m.appendChild(b);}
  else if(f.type==='help_request'){m.append(el('div','head',`🆘 ${String(q.kind||'').toUpperCase()} · urgency ${'●'.repeat(q.urgency||0)}`),
   el('div','sub',`${q.people} ${q.people===1?'person':'people'} affected`));if(q.text)m.appendChild(el('div','body',q.text));}
+ else if(f.type==='water_report'){const rc=(W.recyclers||[]).find(x=>x.id===q.recycler);
+  m.append(el('div','head',`💧 ${ISS[q.issue]||q.issue} · ${rc?rc.name:q.recycler}`),el('div','sub',`severity ${q.severity}`));}
  else if(f.type==='checkin'){const[sn,sc]=STAT[q.status]||[q.status,'#888'];
   const hd=el('div','head');const d=el('span','dot');d.style.background=sc;hd.append(d,` ${sn} · ${roomName(q.sector)}`);
   m.appendChild(hd);if(q.note)m.appendChild(el('div','body',q.note));}
@@ -431,10 +470,13 @@ function renderPhone(p){lastP=p;
  $('pheld').textContent=`holds ${p.held}/${p.total}`;
  TABS.forEach(([id],i)=>{const n=id==='all'?0:(p.counts||{})[id]||0;tabB[i].querySelector('.n').textContent=n?(n>99?'99+':n):'';});
  const list=ptab==='all'?p.feed:((p.tabs||{})[ptab]||[]);
- const fam=ptab==='checkin';
- const key=ptab+'|'+list.map(f=>f.from+':'+f.seq).join()+(fam?'|'+JSON.stringify(p.family)+p.sealed+'|'+Math.floor((snap?snap.tick:0)/3):'');
+ const fam=ptab==='checkin',wat=ptab==='water_report';
+ const key=ptab+'|'+list.map(f=>f.from+':'+f.seq).join()+(fam?'|'+JSON.stringify(p.family)+p.sealed+'|'+Math.floor((snap?snap.tick:0)/3):'')+(wat?'|'+JSON.stringify(p.water)+p.level:'');
  if(key===feedKey)return;feedKey=key;  // only redraw on change
  const box=$('pfeed');box.replaceChildren();
+ if(ptab==='water_report'){const wb=el('div','ph-water');
+  for(const x of p.water||[])wb.appendChild(waterRow(x,x.level===p.level));box.appendChild(wb);
+  const mine=(p.water||[]).find(x=>x.level===p.level);$('wwhich').textContent=mine?`About the ${mine.name} (your taps)`:'';}
  if(fam){box.appendChild(famCards(p));
   box.appendChild(el('div','sealed',`🔒 Also carrying ${p.sealed} sealed check-ins from other families. It passes them on but can't read them.`));}
  if(!list.length){box.appendChild(el('div','empty',TABS.find(t=>t[0]===ptab)[4]));return;}
@@ -459,6 +501,13 @@ function hit(e,reach=.8){if(!snap||!st)return null;const[mx,my]=mpos(e);
 // Over a stairwell, a person only wins if you click right on them (people crowd stair rooms).
 // SOS markers: where each recent call came from (boxes are set by draw(), every frame)
 let sosHits=[];
+let waterHits=[];
+function waterAt(e){const[mx,my]=mpos(e);return waterHits.find(b=>mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h)||null;}
+function waterTitle(x){const o=snap.stats.observer,room=S.find(s=>s.id===x.sector).name;
+ return `Taster · ${x.name} (in ${room}), as seen on ${o.name}'s phone: ${WST[x.status][0]}`+
+  (x.households?`\n${x.households} household${x.households>1?'s':''} reported: ${issueTxt(x)}`:'\nNo reports in the last 12 h')+
+  (x.illness_since?`\n${x.illness_since} households on L${x.level} reported illness since`:'')+
+  ((snap.water_bad||[]).includes(x.level)?'\n(sim truth: this recycler IS broken)':'');}
 function sosAt(e){const[mx,my]=mpos(e);return sosHits.find(b=>mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h)||null;}
 function sosTitle(m){const s=S[m.sector],lv=m.levels.map(l=>'L'+l).join(', ')||'nobody yet';
  return `SOS from r${m.from} in ${s.name} (L${s.level}), ${ago(m.tick)}: ${m.kind}, ${m.people} people, urgency ${m.urgency}`+
@@ -466,16 +515,30 @@ function sosTitle(m){const s=S[m.sector],lv=m.levels.map(l=>'L'+l).join(', ')||'
 cv.addEventListener('click',e=>{const sb=sosAt(e);if(sb){openPhone(sb.m.from);return;}
  const se=stairAt(e),i=hit(e,se!==null?.45:.8);
  if(i!==null)openPhone(i);else if(se!==null)send({cmd:'toggle_stairwell',id:E[se].id});});
-cv.addEventListener('mousemove',e=>{const sb=sosAt(e);
+cv.addEventListener('mousemove',e=>{const sb=sosAt(e),wh=waterAt(e);
+ if(!sb&&wh){hoverStair=null;cv.style.cursor='help';cv.title=waterTitle(wh.r);return;}
  if(sb){hoverStair=null;cv.style.cursor='pointer';cv.title=sosTitle(sb.m);return;}
  const se=stairAt(e),i=hit(e,se!==null?.45:.8);
  hoverStair=i===null?se:null;cv.style.cursor=i!==null||se!==null?'pointer':'default';
  cv.title=hoverStair!==null&&snap?`Stairwell ${EA[se][0].name} ↕ ${EA[se][1].name}: click to ${snap.edges[se]===2?'reopen':'close'}`:'';});
 cv.addEventListener('mouseleave',()=>{hoverStair=null;});
 
+// Background tabs barely draw, but ticks keep arriving. Queueing their walks and particles
+// would replay minutes of movement at once on return, so while hidden (or if anyone falls
+// far behind) we just place people where they are now.
+const MAX_PATH=12,MAX_PARTS=240;
+function snapAll(){if(!snap||!st)return;parts=[];
+ snap.residents.forEach((r,i)=>{const s=st[i],t=tgt(r);s.x=t[0];s.y=t[1];s.sec=r[0];s.path=[];s.hide=0;});}
+// Leaving the tab pauses the sim; coming back resumes it, only if it was playing before.
+let autoPaused=false;
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden){if(snap&&snap.speed>0){autoPaused=true;send({cmd:'speed',x:0});}}
+ else{snapAll();if(autoPaused){autoPaused=false;setSpeed(lastSpeed);}}});
 ws.onmessage=m=>{snap=JSON.parse(m.data);hud();refreshPhone();if(snap.stats&&!$('ct').hidden)renderStats(snap.stats);if(!S)return;
  if(!st||st.length!==snap.residents.length)st=snap.residents.map(r=>{const t=tgt(r);return{x:t[0],y:t[1],sec:r[0],path:[],inside:0}});
+ if(document.hidden){snapAll();if(snap.alerts.length)showAlert(snap.alerts[0]);return;}   // nobody watching: no backlog
  snap.residents.forEach((r,i)=>{const s=st[i];
+  if(s.path.length>MAX_PATH){const t=tgt(r);s.x=t[0];s.y=t[1];s.sec=r[0];s.path=[];s.hide=0;return;}   // fell behind: catch up
   if(r[0]!==s.sec){                                          // changed room: walk the stairs if levels differ
    let done=false;
    E.forEach((e,k)=>{if(e.kind!=='stairwell'||done)return;const[a,b]=EA[k];
@@ -483,6 +546,7 @@ ws.onmessage=m=>{snap=JSON.parse(m.data);hud();refreshPhone();if(snap.stats&&!$(
     else if(b.i===s.sec&&a.i===r[0]){s.path.push(...stairPath(e,k,false));done=true;}});
    s.path.push([...tgt(r),0]);s.sec=r[0];}});
  for(const[a,b]of snap.messages)parts.push({a,b,t:0});
+ if(parts.length>MAX_PARTS)parts.splice(0,parts.length-MAX_PARTS);   // never a flood of old particles
  if(snap.alerts.length)showAlert(snap.alerts[0]);};
 
 function decor(L,i,x,fl,rw,on){
@@ -592,7 +656,7 @@ function draw(){
  if(sel!==null&&st[sel]&&!(st[sel].hide>0)){const s=st[sel],fx=X(s.x),fy=Y(s.y)-sz*.45;   // selected resident
   g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(fx,fy,sz*.7,0,6.283);g.stroke();
   g.fillStyle='#fff';g.font='bold 11px system-ui';g.textAlign='center';g.fillText('r'+sel,fx,fy-sz*.8);g.textAlign='left';}
- drawSOS();
+ drawWater();drawSOS();
  parts=parts.filter(p=>(p.t+=.04)<1);
  for(const p of parts){const a=S[p.a],b=S[p.b];g.fillStyle='#fff';g.beginPath();
   g.arc(X(a.x+(b.x-a.x)*p.t),Y(a.y+(b.y-a.y)*p.t+FL-.02),3,0,6.283);g.fill();}
@@ -617,5 +681,19 @@ function drawSOS(){sosHits=[];const now=performance.now()/1000,used={},rh=h*RH;
   for(let l=0;l<4;l++){const on=m.levels.includes(l);g.fillStyle=on?T[l].acc:'#4a3b36';
    g.fillRect(bx+tw+12+l*9,cy-3.5,6,7);}
   g.globalAlpha=1;sosHits.push({x:cx-12,y:cy-12,w:bx+bw-(cx-12),h:24,m});}}
+// A drop on each recycler, coloured by what the counting phone knows: OK / watch / unsafe.
+function drawWater(){waterHits=[];const ws=(snap.stats&&snap.stats.water)||[],now=performance.now()/1000,rh=h*RH;
+ for(const x of ws){const s=S.find(s=>s.id===x.sector);if(!s)continue;
+  const [lab,col]=WST[x.status],rw=w*s.w,cx=w*s.x+rw/2-16,cy=h*s.y-rh/2+30,bad=x.status==='unsafe';
+  if(bad){const ph=(now*.9)%1;g.globalAlpha=1-ph;g.strokeStyle=col;g.lineWidth=2.5;g.beginPath();g.arc(cx,cy+2,9+ph*15,0,6.283);g.stroke();g.globalAlpha=1;}
+  g.fillStyle=col;g.beginPath();g.moveTo(cx,cy-11);                                     // the drop
+  g.bezierCurveTo(cx+4,cy-4,cx+9,cy,cx+9,cy+5);g.arc(cx,cy+5,9,0,Math.PI);g.bezierCurveTo(cx-9,cy,cx-4,cy-4,cx,cy-11);g.fill();
+  g.strokeStyle='#0008';g.lineWidth=1;g.stroke();
+  let bx=cx-11;
+  if(x.status!=='ok'){g.font='bold 10.5px system-ui';const t=bad?`${lab} · ${x.households}`:`${x.households} report${x.households>1?'s':''}`;
+   const tw=g.measureText(t).width;bx=cx-16-tw-14;g.fillStyle='rgba(8,14,20,.88)';g.beginPath();
+   g.roundRect?g.roundRect(bx,cy-5,tw+14,17,8.5):g.rect(bx,cy-5,tw+14,17);g.fill();g.strokeStyle=col;g.lineWidth=1;g.stroke();
+   g.fillStyle=bad?'#fff':col;g.fillText(t,bx+7,cy+7.5);}
+  waterHits.push({x:bx,y:cy-14,w:cx+11-bx,h:30,r:x});}}
 draw();
 </script>

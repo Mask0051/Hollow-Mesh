@@ -25,26 +25,26 @@
 <text x="178.0" y="156.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="end">Wi-Fi cut: mesh only</text>
 <path d="M190.0,140.0 h161.6 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-161.6 z" fill="#2a78d6"/>
 <text x="361.6" y="150.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">45</text>
-<path d="M190.0,153.0 h327.2 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-327.2 z" fill="#eb6834"/>
-<text x="527.2" y="163.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">90</text>
+<path d="M190.0,153.0 h290.4 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-290.4 z" fill="#eb6834"/>
+<text x="490.4" y="163.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">80</text>
 <text x="178.0" y="196.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="end">… 25% of phones dead</text>
-<path d="M190.0,180.0 h180.0 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-180.0 z" fill="#2a78d6"/>
-<text x="380.0" y="190.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">50</text>
-<path d="M190.0,193.0 h345.6 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-345.6 z" fill="#eb6834"/>
-<text x="545.6" y="203.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">95</text>
+<path d="M190.0,180.0 h161.6 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-161.6 z" fill="#2a78d6"/>
+<text x="361.6" y="190.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">45</text>
+<path d="M190.0,193.0 h419.2 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-419.2 z" fill="#eb6834"/>
+<text x="619.2" y="203.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">115</text>
 <text x="178.0" y="236.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="end">… 50% of phones dead</text>
-<path d="M190.0,220.0 h253.6 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-253.6 z" fill="#2a78d6"/>
-<text x="453.6" y="230.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">70</text>
+<path d="M190.0,220.0 h235.2 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-235.2 z" fill="#2a78d6"/>
+<text x="435.2" y="230.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">65</text>
 <path d="M190.0,233.0 h419.2 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-419.2 z" fill="#eb6834"/>
 <text x="619.2" y="243.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">115</text>
 <text x="178.0" y="276.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="end">… 75% of phones dead</text>
-<path d="M190.0,260.0 h253.6 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-253.6 z" fill="#2a78d6"/>
-<text x="453.6" y="270.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">70</text>
-<path d="M190.0,273.0 h400.8 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-400.8 z" fill="#eb6834"/>
-<text x="600.8" y="283.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">110</text>
+<path d="M190.0,260.0 h198.4 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-198.4 z" fill="#2a78d6"/>
+<text x="398.4" y="270.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">55</text>
+<path d="M190.0,273.0 h345.6 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-345.6 z" fill="#eb6834"/>
+<text x="545.6" y="283.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">95</text>
 <text x="178.0" y="316.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="end">… Deep blacked out</text>
 <path d="M190.0,300.0 h180.0 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-180.0 z" fill="#2a78d6"/>
 <text x="380.0" y="310.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">50</text>
-<path d="M190.0,313.0 h364.0 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-364.0 z" fill="#eb6834"/>
-<text x="564.0" y="323.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">100</text>
+<path d="M190.0,313.0 h308.8 a4.0,4.0 0 0 1 4.0,4.0 v3.0 a4.0,4.0 0 0 1 -4.0,4.0 h-308.8 z" fill="#eb6834"/>
+<text x="508.8" y="323.0" fill="#52514e" font-size="11" font-weight="400" text-anchor="start">85</text>
 </svg>

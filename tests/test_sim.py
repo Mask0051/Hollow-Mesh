@@ -293,7 +293,7 @@ def test_unhashable_ids_from_the_browser_dont_crash(world):
 
 
 def spread_with(world, seed: int, *, wifi: bool, mesh: bool, cut_stairs: bool = False) -> Sim:
-    """Settle, set the switches, send a red beacon from r0, run 25 ticks."""
+    """Settle, set the switches, send a red beacon from r0, run 40 ticks."""
     sim = Sim(world, seed=seed, n_residents=N)
     run(sim, 5)
     sim.queue_cmd({"cmd": "network", "on": wifi})
@@ -302,7 +302,7 @@ def spread_with(world, seed: int, *, wifi: bool, mesh: bool, cut_stairs: bool = 
         for sid in stairwells(sim):
             sim.queue_cmd({"cmd": "cut_stairwell", "id": sid})
     sim.queue_cmd({"cmd": "beacon", "resident": 0, "color": "#ff3b30"})
-    run(sim, 25)
+    run(sim, 40)
     return sim
 
 
