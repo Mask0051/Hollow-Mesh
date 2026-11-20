@@ -135,7 +135,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--speed", type=float, default=1.0,
                    help=f"start speed: 1 = one tick per {TICK_S}s, 0 = start paused")
     a = p.parse_args(argv)
-    print(f"Hollow sim on http://localhost:{a.port}  "
+    print(f"Rat King sim on http://localhost:{a.port}  "
           f"(seed {a.seed}, script {'on' if a.script else 'off'}, speed {a.speed}x)")
     uvicorn.run(create_app(a.seed, a.script, a.residents, a.speed), host=a.host, port=a.port,
                 log_level="warning")

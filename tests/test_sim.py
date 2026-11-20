@@ -283,7 +283,7 @@ def test_unhashable_ids_from_the_browser_dont_crash(world):
     sim.tick()  # must not raise
 
 
-# --- Wi-Fi / Hollow Mesh switches --------------------------------------------------------
+# --- Wi-Fi / Rat King switches -----------------------------------------------------------
 
 
 def spread_with(world, seed: int, *, wifi: bool, mesh: bool, cut_stairs: bool = False) -> Sim:
@@ -453,3 +453,116 @@ def test_mesh_still_works_on_a_dark_level(world):
     sim.queue_cmd({"cmd": "beacon", "resident": 0, "color": "#ff3b30"})
     run(sim, 60)
     assert red(sim) > N // 2  # slower (only ~30% of phones up each tick), but it spreads
+
+
+# --- phone tabs: one per record type --------------------------------------------------------
+
+
+def test_phone_sends_sos_and_health_reports_into_their_tabs(world):
+    sim = Sim(world, seed=29, n_residents=N)
+    run(sim, 300)  # past day 1, so "2 days ago" has somewhere to go
+    sim.queue_cmd({"cmd": "help", "resident": 0, "kind": "medical", "urgency": 2,
+                   "people": 3, "text": "broken leg"})
+    sim.queue_cmd({"cmd": "health", "resident": 0, "sym": ["cough", "fever"], "severity": 2,
+                   "sick": 4, "ago": 1})
+    sim.queue_cmd({"cmd": "beacon", "resident": 0, "color": "#22c55e"})
+    run(sim, 1)
+    p = sim.phone(0)
+    sos, health = p["tabs"]["help_request"][0], p["tabs"]["health_report"][0]
+    assert sos["mine"] and sos["p"]["kind"] == "medical" and sos["p"]["people"] == 3
+    assert health["p"]["sym"] == ["cough", "fever"] and health["p"]["onset_day"] == p["day"] - 1
+    here = sim.sectors[sim.residents[0]["sec"]]
+    assert sos["p"]["sector"] == health["p"]["sector"] == here["id"]  # stamped at send time
+    assert p["tabs"]["beacon"][0]["color"] == "#22c55e"
+    assert all(e["type"] == t for t, es in p["tabs"].items() for e in es)
+    assert p["counts"]["help_request"] == len(p["tabs"]["help_request"])
+    run(sim, 30)
+    assert any(e["from"] == "r0" for e in sim.phone(1)["tabs"]["health_report"])  # it spreads
+
+
+def test_bad_sos_and_health_reports_are_dropped(world):
+    sim = Sim(world, seed=30, n_residents=N)
+    good_help = {"cmd": "help", "resident": 0, "kind": "air", "urgency": 1, "people": 0,
+                 "text": ""}
+    good_health = {"cmd": "health", "resident": 0, "sym": ["chest"], "severity": 1, "sick": 1}
+    for junk in [{**good_help, "kind": "lost"}, {**good_help, "urgency": 9},
+                 {**good_help, "people": "2"}, {**good_help, "text": "x" * 281},
+                 {**good_health, "sym": ["rash"]}, {**good_health, "sym": []},
+                 {**good_health, "sick": 0}, {**good_health, "ago": -1},
+                 {**good_health, "ago": True}, {**good_health, "resident": 10_000},
+                 {**good_health, "sym": [["cough"]]}]:
+        sim.queue_cmd(junk)
+    run(sim, 1)
+    assert sim.phone(0)["counts"]["help_request"] == sim.phone(0)["counts"]["health_report"] == 0
+    sim.queue_cmd(good_help)
+    sim.queue_cmd(good_health)  # "ago" defaults to today; day 0 is fine
+    run(sim, 1)
+    assert sim.phone(0)["counts"]["health_report"] == 1
+    assert sim.phone(0)["tabs"]["health_report"][0]["p"]["onset_day"] == 0
+
+
+# --- Countertally + sickness (P8 / H9) ---------------------------------------------------
+
+
+def test_sick_residents_file_real_health_reports(world):
+    sim = Sim(world, seed=3, n_residents=N)
+    run(sim, 150)
+    cases = sim.sickness.cases
+    assert cases, "nobody got sick"
+    filed = [c for c in cases if c.report_at is not None and c.report_at <= sim.t]
+    reports = [x for x in sim.residents[0]["node"].all_records() if x["type"] == "health_report"]
+    assert len(reports) <= len(filed) and filed
+    authors = {r["node"].node_id: r["id"] for r in sim.residents}
+    for x in reports:  # each one came from the sick resident's own phone
+        c = sim.sickness.had[authors[x["author"]]]
+        assert x["payload"]["sector"] == c.sector and x["payload"]["sick"] == c.sick
+
+
+def test_deeper_levels_get_sicker(world):
+    truth = [0, 0, 0, 0]
+    for seed in range(4):
+        sim = Sim(world, seed=seed, n_residents=N)
+        run(sim, 200)
+        truth = [a + b for a, b in zip(truth, sim.stats()["truth"], strict=True)]
+    assert truth[3] > truth[0]
+
+
+def test_countertally_beats_the_official_number_and_never_exceeds_truth(world):
+    sim = Sim(world, seed=1, n_residents=N)
+    run(sim, 250)
+    st = sim.stats()
+    assert sum(st["countertally"]) > sum(st["official"])
+    for ours, real in zip(st["countertally"], st["truth"], strict=True):
+        assert ours <= real  # we only count what was really reported
+
+
+def test_a_cut_off_level_goes_stale_not_zero(world):
+    sim = Sim(world, seed=2, n_residents=N)
+    sim.queue_cmd({"cmd": "cut_network"})
+    sim.queue_cmd({"cmd": "cut_stairwell", "id": "ST-2-3-a"})
+    run(sim, 1)
+    obs = next(r["id"] for r in sim.residents if sim._level(r) != 3)
+    sim.queue_cmd({"cmd": "observe", "resident": obs})
+    run(sim, 80)
+    st = sim.stats()
+    assert sim._level(sim.residents[obs]) != 3  # nobody walks through a cut shaft
+    assert st["staleness"][3] is None or st["staleness"][3] >= 70  # unknown or old, never fresh
+    assert sum(st["truth"]) >= 0 and st["observer"]["id"] == obs
+
+
+def test_observe_command_validates(world):
+    sim = Sim(world, seed=1, n_residents=N)
+    before = sim.observer
+    for bad in (-1, N, True, "3", None, 2.0):
+        sim.queue_cmd({"cmd": "observe", "resident": bad})
+    run(sim, 1)
+    assert sim.observer == before
+    sim.queue_cmd({"cmd": "observe", "resident": 7})
+    run(sim, 1)
+    assert sim.observer == 7 and sim.stats()["observer"]["name"] == "r7"
+
+
+def test_sickness_can_be_switched_off(world):
+    sim = Sim(world, seed=1, n_residents=N, sickness=False)
+    snap = run(sim, 100)[-1]
+    assert snap["sick"] == [] and snap["stats"]["truth"] == [0, 0, 0, 0]

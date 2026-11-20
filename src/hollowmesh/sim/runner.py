@@ -6,7 +6,7 @@ protocol does everything else (Doc 2 §1.6).
 
 Tick loop (1 tick = 10 sim-minutes):
     1. apply queued / scripted commands (Directorate attacks, injects)
-    2. residents walk (only through intact edges)
+    2. residents walk (only through intact edges); sickness spreads (H9)
     3. reachability: who can talk to whom this tick
     4. publish: injected reports + random posts (pushed to up to 3 reachable peers)
     5. every node gossips with up to 2 reachable peers, in a seeded shuffled order
@@ -17,7 +17,7 @@ Reachability rules (Doc 2 §1.6):
       or stairwell links one random pair across it.
     * Stairwells are the only links between levels. A cut stairwell carries no links
       and no movement.
-    * Two switches for the demo: the Directorate network ("Wi-Fi") and Hollow Mesh itself.
+    * Two switches for the demo: the Directorate network ("Wi-Fi") and Rat King, our mesh.
       Mesh off = no phone-to-phone or relay links, so only Wi-Fi can carry anything.
     * Directorate network: while it's up, every node gets 1 random long-range link per
       tick. Cutting it leaves only the mesh plus people walking.
@@ -25,6 +25,10 @@ Reachability rules (Doc 2 §1.6):
       the Directorate network needs mains power, so a dark level gets no Wi-Fi links.
     * Lying relay (P7): records crossing a lying edge get their payload rewritten in
       transit. The signature no longer matches, so the receiving node raises a tamper alert.
+
+Countertally (P8): sick residents file signed health_reports. stats() counts them from
+ONE observer phone's store (whatever that phone has received), next to the Directorate's
+official undercount and the hidden ground truth.
 
 Phones (demo): click a resident to post or send a beacon colour from their node. Each
 resident is drawn in the colour of the newest beacon their own node holds.
@@ -39,10 +43,15 @@ import random
 from collections import defaultdict
 from typing import Any
 
+from pydantic import ValidationError
+
 from ..protocol.node import Alert, Node
 from ..protocol.record import Keypair, Record, RecordProblem, check_record
 from ..protocol.sync import Gossiper
 from ..protocol.transport.memory import MemoryTransport
+from ..protocol.types import PAYLOAD_SCHEMAS
+from ..services.countertally import tally
+from .sickness import Sickness
 
 TICK_MS = 600_000  # 1 tick = 10 sim-minutes; record ts is sim time, never wall time
 WALK_P, POST_P = 0.08, 0.001
@@ -51,7 +60,8 @@ BLACKOUT_ON_P = 0.3  # a node on a dark level is up this tick with this probabil
 MAX_PARTICLES = 60  # cross-sector message particles per snapshot
 SHOWN_ALERTS = ("tamper", "fork")  # gaps are routine during gossip; counted, not shown
 DEFAULT_COLOR = "#ffe27a"  # everyone's colour until a beacon reaches them
-FEED_LEN = 40  # newest records shown on a resident's phone
+FEED_LEN = 40  # newest records shown on a resident's phone (per tab)
+PHONE_TABS = ("post", "beacon", "help_request", "health_report")  # one phone tab per type
 _HEX = frozenset("0123456789abcdef")
 
 DEMO_SCRIPT: dict[int, list[dict[str, Any]]] = {  # tick -> commands (H10)
@@ -114,6 +124,7 @@ class Sim:
         seed: int = 42,
         n_residents: int = 300,
         script: dict[int, list[dict[str, Any]]] | None = None,
+        sickness: bool = True,
     ) -> None:
         self.seed = seed
         self.rng = random.Random(seed)
@@ -133,7 +144,7 @@ class Sim:
         self.t = 0
         self.queue: list[dict[str, Any]] = []
         self.net_cut = False  # Directorate network ("Wi-Fi") down
-        self.mesh_off = False  # Hollow Mesh switched off: no mesh links at all
+        self.mesh_off = False  # Rat King (the mesh) switched off: no mesh links at all
         self.dark: list[int] = []
         self.lying: list[str] = []  # edge ids with a lying relay on them
 
@@ -167,6 +178,11 @@ class Sim:
 
         for r in self.residents:  # every feed starts with a profile (seq 1)
             self._publish(r, "profile", {"kind": "public", "level": self._level(r)})
+
+        self.sickness = Sickness() if sickness else None
+        # Countertally runs on this resident's phone: someone who starts in the Clinic.
+        clinic = next((i for i, s in enumerate(self.sectors) if s["name"] == "Clinic"), -1)
+        self.observer = next((r["id"] for r in self.residents if r["sec"] == clinic), 0)
 
     # ---- Network (what MemoryTransport asks) ----------------------------------------------
 
@@ -230,11 +246,13 @@ class Sim:
             sector = _text(c, "sector") or "L3-S04"
             if sector in self.idx:
                 self._to_inject.append(sector)  # published after this tick's reachability
-        elif k in ("post", "beacon"):  # sent from a resident's phone
+        elif k in ("post", "beacon", "help", "health"):  # sent from a resident's phone
             i = c.get("resident")
             if not isinstance(i, int) or isinstance(i, bool) or not 0 <= i < len(self.residents):
                 return
-            if k == "post":
+            if k in ("help", "health"):
+                self._queue_report(i, k, c)
+            elif k == "post":
                 text = c.get("text")
                 if isinstance(text, str) and 0 < len(text.strip()) and len(text) <= 280:
                     self._to_send.append((i, "post", {"text": text}))
@@ -244,6 +262,10 @@ class Sim:
                         and set(color[1:].lower()) <= _HEX
                         and isinstance(label, str) and len(label) <= 40):
                     self._to_send.append((i, "beacon", {"color": color.lower(), "label": label}))
+        elif k == "observe":  # dashboard: run Countertally on this resident's phone
+            i = c.get("resident")
+            if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < len(self.residents):
+                self.observer = i
         elif k == "heal":
             self.net_cut, self.mesh_off, self.dark, self.lying = False, False, [], []
             for e in self.edges:
@@ -263,6 +285,8 @@ class Sim:
                 opts = [b for ei, b in self.adj[r["sec"]] if self.edges[ei]["up"]]
                 if opts:
                     r["sec"] = self.rng.choice(opts)
+        if self.sickness:
+            self.sickness.step(self)  # queues the health reports that are due
 
         self._reachability()
 
@@ -271,7 +295,7 @@ class Sim:
         self._to_inject = []
         for i, type, fields in self._to_send:
             r = self.residents[i]
-            if type == "post":  # location is wherever they are when it's sent
+            if type != "beacon" and "level" not in fields:  # where they are when it's sent
                 fields = {**fields, "level": self._level(r), "sector": self.sectors[r["sec"]]["id"]}
             self._publish(r, type, fields)
         self._to_send = []
@@ -344,6 +368,33 @@ class Sim:
     def _level(self, r: dict[str, Any]) -> int:
         return self.level_of[r["sec"]]
 
+    def _queue_report(self, i: int, k: str, c: dict[str, Any]) -> None:
+        """Phone SOS ({"cmd": "help", kind, urgency, people, text}) or health report
+        ({"cmd": "health", sym, severity, sick, ago}). Checked against the real schema
+        now, so junk is dropped here instead of failing at publish."""
+        if k == "help":
+            type = "help_request"
+            fields = {f: c.get(f) for f in ("kind", "urgency", "people", "text")}
+        else:
+            type = "health_report"
+            ago = c.get("ago", 0)
+            if not isinstance(ago, int) or isinstance(ago, bool) or not 0 <= ago <= 14:
+                return
+            fields = {f: c.get(f) for f in ("sym", "severity", "sick")}
+            fields["onset_day"] = max(0, self.day - ago)
+        r = self.residents[i]
+        try:  # with the sender's current location (refreshed again when it's sent)
+            PAYLOAD_SCHEMAS[type].model_validate(
+                {**fields, "level": self._level(r), "sector": self.sectors[r["sec"]]["id"]})
+        except ValidationError:
+            return
+        self._to_send.append((i, type, fields))
+
+    @property
+    def day(self) -> int:
+        """Sim day, from 0 (a tick is TICK_MS of sim time)."""
+        return self.t * TICK_MS // 86_400_000
+
     def _publish(self, r: dict[str, Any], type: str, payload: dict[str, Any]) -> Record:
         rec = r["gossip"].publish(type=type, payload=payload, now_ms=self.t * TICK_MS)
         self.total_published += 1
@@ -403,18 +454,47 @@ class Sim:
         vv = node.version_vector()
         recs = [x for x in node.all_records() if x["type"] != "profile"]
         recs.sort(key=lambda x: (x["ts"], x["author"], x["seq"]), reverse=True)
-        feed = []
-        for x in recs[:FEED_LEN]:
+
+        def entry(x: Record) -> dict[str, Any]:
             p = x["payload"]
-            feed.append({"from": self.name(x["author"]), "mine": x["author"] == node.node_id,
-                         "type": x["type"], "seq": x["seq"], "tick": x["ts"] // TICK_MS,
-                         "text": p.get("text"), "color": p.get("color"),
-                         "label": p.get("label"), "sector": p.get("sector")})
+            return {"from": self.name(x["author"]), "mine": x["author"] == node.node_id,
+                    "type": x["type"], "seq": x["seq"], "tick": x["ts"] // TICK_MS,
+                    "text": p.get("text"), "color": p.get("color"),
+                    "label": p.get("label"), "sector": p.get("sector"), "p": dict(p)}
+
+        feed = [entry(x) for x in recs[:FEED_LEN]]
+        tabs: dict[str, list[dict[str, Any]]] = {t: [] for t in PHONE_TABS}
+        counts = dict.fromkeys(PHONE_TABS, 0)
+        for x in recs:  # newest first, so each tab keeps its newest FEED_LEN
+            if x["type"] in tabs:
+                counts[x["type"]] += 1
+                if len(tabs[x["type"]]) < FEED_LEN:
+                    tabs[x["type"]].append(entry(x))
         sector = self.sectors[r["sec"]]
         return {"id": i, "name": f"r{i}", "node_id": node.node_id, "sector": sector["id"],
                 "room": sector["name"], "level": sector["level"],
                 "peers": len(self._links.get(node.node_id, [])), "color": self.color_of(vv),
-                "held": sum(vv.values()), "total": self.total_published, "feed": feed}
+                "held": sum(vv.values()), "total": self.total_published, "feed": feed,
+                "tabs": tabs, "counts": counts, "day": self.day}
+
+    def stats(self) -> dict[str, Any]:
+        """Countertally's split screen (Doc 2 §1.6 "stats"), all lists indexed by level.
+
+        countertally/staleness/flags come only from the observer phone's own store.
+        official is the Directorate's undercount; truth is for judges and eval only.
+        """
+        r = self.residents[self.observer]
+        out = tally(r["node"].all_records(), self.t * TICK_MS, self.levels,
+                    len(self.sectors), TICK_MS)
+        sk, day = self.sickness, self.day
+        out["official"] = sk.official(self.t, day, self.levels) if sk else [0] * self.levels
+        out["truth"] = sk.truth(self.t, day, self.levels) if sk else [0] * self.levels
+        for f in out["flags"]:
+            f["name"] = self.sectors[self.idx[f["sector"]]]["name"] if f["sector"] in self.idx else ""
+        sec = self.sectors[r["sec"]]
+        out["observer"] = {"id": self.observer, "name": f"r{self.observer}",
+                           "room": sec["name"], "level": sec["level"]}
+        return out
 
     def snapshot(self) -> dict[str, Any]:
         n, tot = len(self.residents), self.total_published
@@ -441,4 +521,6 @@ class Sim:
                 "mesh_up": not self.mesh_off,
                 "messages": self.msgs,
                 "syncPct": round(have / (tot * n), 3) if tot else 1.0,
-                "probeLevels": sorted(reached), "alerts": self.events, "lying": self.lying}
+                "probeLevels": sorted(reached), "alerts": self.events, "lying": self.lying,
+                "sick": self.sickness.sick_now(self.t) if self.sickness else [],
+                "stats": self.stats()}

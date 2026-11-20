@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from hollowmesh.protocol.types import PAYLOAD_SCHEMAS
 
 ID = "ab" * 32
+HR = {"level": 3, "sector": "L3-S04", "sym": ["cough"], "severity": 1, "sick": 1, "onset_day": 4}
 
 VALID = [
     ("profile", {"kind": "public", "level": 0}),
@@ -25,6 +26,9 @@ VALID = [
     ),
     ("beacon", {"color": "#ff3366"}),
     ("beacon", {"color": "#00aaff", "label": "Level 3 beacon"}),
+    ("health_report", {**HR}),
+    ("health_report", {**HR, "sym": ["cough", "fever", "breath", "chest"], "severity": 3,
+                       "sick": 50, "onset_day": 0}),
 ]
 
 INVALID = [
@@ -48,6 +52,18 @@ INVALID = [
     ("beacon", {"color": "#FF3366"}),  # lowercase only
     ("beacon", {"color": "#ff336"}),
     ("beacon", {"color": "#ff3366", "label": "x" * 41}),
+    ("health_report", {**HR, "sym": []}),  # at least one symptom
+    ("health_report", {**HR, "sym": ["rash"]}),  # unknown symptom
+    ("health_report", {**HR, "sym": ["cough", "cough"]}),  # no repeats
+    ("health_report", {**HR, "sym": "cough"}),  # a list, not a string
+    ("health_report", {**HR, "severity": 0}),  # severity 1-3
+    ("health_report", {**HR, "severity": 4}),
+    ("health_report", {**HR, "sick": 0}),  # the reporter counts
+    ("health_report", {**HR, "sick": 51}),  # caps one report's weight
+    ("health_report", {**HR, "onset_day": -1}),
+    ("health_report", {**HR, "level": 2}),  # sector says L3
+    ("health_report", {k: v for k, v in HR.items() if k != "onset_day"}),  # missing field
+    ("health_report", {**HR, "name": "Ana"}),  # no identifying extras
 ]
 
 
