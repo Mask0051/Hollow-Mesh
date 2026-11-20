@@ -1,7 +1,7 @@
 # Uses the project venv if it exists, so `make test` works without activating it.
 PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: venv install test chaos check lint fix demo sim node clean
+.PHONY: venv install test chaos check lint fix demo sim node metrics clean
 
 # One-time setup: create .venv and install everything (editable).
 venv:
@@ -36,6 +36,11 @@ demo:
 
 sim:
 	$(PY) -m hollowmesh.sim
+
+# P9: measured results over 10 seeds -> results.json + README charts (same seeds, same files)
+metrics:
+	$(PY) -m hollowmesh.sim.metrics --out results.json
+	$(PY) -m hollowmesh.sim.plots results.json docs/img
 
 # P11: a single node over HTTP
 node:

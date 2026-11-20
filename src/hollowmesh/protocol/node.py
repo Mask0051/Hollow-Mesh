@@ -283,11 +283,14 @@ class Node:
         if self._vv.items() <= theirs.items():
             return []
         out: list[Record] = []
-        for author in self._authors:  # sorted = same order on every node
+        # Only authors whose (author, count) pair differs (a C-level set difference),
+        # sorted = same order on every node.
+        for author, n in sorted(self._vv.items() - theirs.items()):
             # They hold seqs 1..start, so they need seq start+1 onward = ids[start:].
             # max(0, ...) so a bogus negative count can't slice from the end.
-            start = max(0, theirs.get(author, 0))
-            if start < self._vv[author]:
+            start = theirs.get(author, 0)
+            start = max(0, start) if isinstance(start, int) else 0
+            if start < n:
                 out.extend(map(self._records.__getitem__, self._feeds[author][start:]))
         # Pending records are never sent. (sync.batch applies the 500-record limit.)
         return out

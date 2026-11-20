@@ -21,8 +21,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .runner import Sim
 
-BASE_P = (0.0001, 0.0003, 0.0006, 0.0015)  # per resident per tick, by level (L0..L3)
-SPREAD = 0.01  # extra chance per tick x share of the room that is sick
+BASE_P = (0.0001, 0.0003, 0.0006, 0.002)  # per resident per tick, by level (L0..L3)
+SPREAD = 0.004  # extra chance per tick x share of the room that is sick
 SICK_TICKS = (144, 432)  # ill for 1-3 sim days
 REPORT_P = 0.85  # share of sick households that file a report
 REPORT_DELAY = (1, 18)  # ticks between falling ill and filing (up to 3 hours)
