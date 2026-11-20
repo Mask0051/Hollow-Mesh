@@ -128,6 +128,15 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
 .empty{color:#666;text-align:center;margin:auto;font-size:12px}
 .ph-colors{display:flex;gap:6px;margin:8px 0 2px;justify-content:space-between}.ph-colors[hidden]{display:none}
 .ph-colors button{width:34px;height:34px;border-radius:50%;padding:0;border:2px solid #0008}
+/* family */
+.fam{display:flex;flex-direction:column;gap:5px;margin-bottom:4px}
+.mem{display:flex;gap:8px;align-items:center;background:#1a1a1a;border:1px solid #2c2c2c;border-radius:10px;padding:6px 8px}
+.mem .st{width:10px;height:10px;border-radius:50%;flex:none;background:#555}
+.mem .who{font-weight:600;font-size:12px}.mem .wh{font-size:11px;color:#aaa}.mem .nt{font-size:11px;color:#ddd;font-style:italic}
+.mem .ag{margin-left:auto;font-size:10px;color:#888;white-space:nowrap;align-self:flex-start}
+.sealed{font-size:10.5px;color:#777;text-align:center;padding:2px 0 4px}
+.msg.ci{background:#1d2333;border:1px solid #33405e}.msg.mine.ci{background:#22304a}
+.ph-tabs button{font-size:9.5px}
 #pform{display:flex;gap:6px;margin-top:8px}#pform[hidden]{display:none}
 #ptext{flex:1;min-width:0;background:#222;color:#eee;border:1px solid #555;border-radius:14px;padding:6px 10px}
 #pform button{border-radius:14px}
@@ -174,7 +183,9 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
   <button title="Dismiss" onclick="$('toast').hidden=true">×</button></div>
  <div id="help" hidden><button class="x" title="Close (Esc)" onclick="toggleHelp(false)">×</button>
   <h3>How to use the sim</h3>
-  <ul><li><b>Click a person</b> to use their phone. Its tabs (Chat, Colour, SOS, Health) each show and send one kind of message; watch it spread.
+  <ul><li><b>Click a person</b> to use their phone. <b>All</b> shows everything it holds and lets you post or send a colour to everyone; SOS, Health and Family each show and send one kind of message. Watch it spread.
+   A pulsing <b>SOS</b> marks where a call for help came from; its four pips light up as each level receives it (hover for details, click for the sender's phone).
+   Dashed lines join them to their family; <b>Family</b> check-ins are encrypted so only relatives can read them.
    Each person turns the colour of the newest beacon <i>their</i> phone has received.</li>
    <li><b>Click a stairwell</b> to close or reopen it. Closed stairwells carry no messages.</li>
    <li><b>Networks</b>: switch the Directorate's Wi-Fi and Rat King (our mesh) on/off to compare them.</li>
@@ -194,7 +205,7 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
   <div class="ph-me"><span class="dot" id="pdot"></span><span id="pcol"></span><span id="pheld"></span></div>
   <div class="ph-tabs" id="ptabs" role="tablist"></div>
   <div id="pfeed"></div>
-  <form id="pform"><input id="ptext" maxlength="280" placeholder="Message everyone…" autocomplete="off"><button class="send">Send</button></form>
+  <form id="pform"><input id="ptext" maxlength="280" placeholder="Post to everyone on the mesh…" autocomplete="off"><button class="send">Send</button></form>
   <div class="ph-colors" id="pcolors" hidden></div>
   <form id="psos" class="cmp" hidden>
    <div class="r"><select id="skind" class="grow" title="What kind of help">
@@ -212,6 +223,12 @@ button.send{border-radius:14px}button.send.sos{background:#7a1d16;border-color:#
    <div class="r">Started <select id="hago" class="grow"><option value="0">today</option><option value="1">yesterday</option>
     <option value="2">2 days ago</option><option value="3">3 days ago</option><option value="7">a week ago</option></select>
     <button class="send">Send report</button></div>
+  </form>
+  <form id="pfam" class="cmp" hidden>
+   <div class="r"><span class="seg" id="cstat"></span></div>
+   <div class="r"><input id="cnote" class="grow" maxlength="140" placeholder="Note for your family (optional)" autocomplete="off">
+    <button class="send">Check in</button></div>
+   <div class="r" style="font-size:10.5px;color:#777">🔒 Encrypted: only your family can read it</div>
   </form>
  </div>
 </div>
@@ -340,20 +357,23 @@ const DEF='#ffe27a',COLORS=[['red','#ff3b30'],['blue','#3b82f6'],['green','#22c5
 const colorName=c=>(COLORS.find(x=>x[1]===c)||[c])[0];
 let sel=null,phoneBusy=false,feedKey='',ptab='all',lastP=null;
 // One tab per record type. Each has its own feed and its own way to send.
-const TABS=[['all','📥','All',null,'Nothing received yet'],['post','💬','Chat','pform','No messages yet'],
- ['beacon','🎨','Colour','pcolors','No colours yet'],['help_request','🆘','SOS','psos','No SOS calls yet'],
- ['health_report','🩺','Health','phealth','No health reports yet']];
+const TABS=[['all','📥','All','pform pcolors','Nothing received yet'],
+ ['help_request','🆘','SOS','psos','No SOS calls yet'],
+ ['health_report','🩺','Health','phealth','No health reports yet'],['checkin','👪','Family','pfam','No check-ins from your family yet']];
 const tabB=TABS.map(([id,ic,name])=>{const b=el('button');b.setAttribute('role','tab');b.title=name;
  b.append(el('span','ic',ic),el('span',null,name),el('span','n',''));b.onclick=()=>setTab(id);$('ptabs').appendChild(b);return b;});
 function setTab(id){ptab=id;feedKey='';const form=TABS.find(t=>t[0]===id)[3]||'pform';
  TABS.forEach((t,i)=>tabB[i].setAttribute('aria-selected',t[0]===id));
- for(const f of['pform','pcolors','psos','phealth'])$(f).hidden=f!==form;
+ for(const f of['pform','pcolors','psos','phealth','pfam'])$(f).hidden=!form.split(' ').includes(f);   // All: post + colours
  if(lastP)renderPhone(lastP);}
 // small controls: segmented 1-2-3 and on/off chips
 function seg(id,vals,init){let v=init;const bs=vals.map(x=>{const b=el('button',null,String(x));b.type='button';
   b.onclick=()=>{v=x;bs.forEach((y,i)=>y.setAttribute('aria-pressed',vals[i]===v));};$(id).appendChild(b);return b;});
  bs.forEach((y,i)=>y.setAttribute('aria-pressed',vals[i]===v));return()=>v;}
 const urg=seg('surg',[1,2,3],2),sev=seg('hsev',[1,2,3],1);
+const STAT={ok:['OK','#5fe08a'],hurt:['Hurt','#ffb347'],need_help:['Need help','#ff3b30'],moving:['Moving','#6cc7e8']};
+const cstat=seg('cstat',Object.keys(STAT),'ok');
+$('cstat').querySelectorAll('button').forEach((b,i)=>{b.textContent=STAT[Object.keys(STAT)[i]][0];});
 const SYM=['cough','fever','breath','chest'],symOn=new Set(['cough']);
 SYM.forEach(n=>{const b=el('button',null,n==='breath'?'short of breath':n==='chest'?'chest pain':n);b.type='button';
  b.setAttribute('aria-pressed',symOn.has(n));
@@ -369,6 +389,8 @@ $('psos').onsubmit=e=>{e.preventDefault();if(sel===null)return;
 $('phealth').onsubmit=e=>{e.preventDefault();if(sel===null)return;
  if(!symOn.size){$('hsym').animate([{opacity:.3},{opacity:1}],400);return;}   // pick at least one symptom
  send({cmd:'health',resident:sel,sym:SYM.filter(n=>symOn.has(n)),severity:sev(),sick:num('hsick',1,50),ago:+$('hago').value});};
+$('pfam').onsubmit=e=>{e.preventDefault();if(sel===null)return;
+ send({cmd:'checkin',resident:sel,status:cstat(),note:$('cnote').value.slice(0,140)});$('cnote').value='';};
 setTab('all');
 function openPhone(i){sel=i;send({cmd:'observe',resident:i});feedKey='';lastP=null;$('phone').hidden=false;refreshPhone();}
 function closePhone(){sel=null;$('phone').hidden=true;}
@@ -376,13 +398,26 @@ function refreshPhone(){if(sel===null||phoneBusy)return;phoneBusy=true;const wan
  fetch('/resident/'+want).then(r=>r.json()).then(p=>{if(want===sel&&!p.error)renderPhone(p);})
   .catch(()=>{}).finally(()=>{phoneBusy=false;});}
 const SYMTXT={cough:'cough',fever:'fever',breath:'short of breath',chest:'chest pain'};
-function bubble(f,day){const q=f.p||{},cls=f.type==='help_request'?' sos':f.type==='health_report'?' hr':'';
+const roomName=id=>{const s=S&&S.find(s=>s.id===id);return s?`${s.name}, L${s.level}`:id;};
+const ago=t=>{const m=Math.max(0,((snap?snap.tick:t)-t)*TICK_MIN);return m<60?`${m} min ago`:m<1440?`${Math.floor(m/60)}h ago`:`${Math.floor(m/1440)}d ago`;};
+function famCards(p){const box=el('div','fam');
+ for(const f of p.family||[]){const c=el('div','mem'),dot=el('span','st'),col=el('div');
+  if(f.status)dot.style.background=STAT[f.status][1];
+  col.appendChild(el('div','who',f.me?`${f.name} (you)`:f.name));
+  col.appendChild(el('div','wh',f.status?`${STAT[f.status][0]} · ${f.room}, L${f.level}`:'No check-in received yet'));
+  if(f.note)col.appendChild(el('div','nt','“'+f.note+'”'));
+  c.append(dot,col);if(f.status)c.appendChild(el('span','ag',ago(f.tick)));box.appendChild(c);}
+ return box;}
+function bubble(f,day){const q=f.p||{},cls=f.type==='help_request'?' sos':f.type==='health_report'?' hr':f.type==='checkin'?' ci':'';
  const m=el('div','msg'+(f.mine?' mine':'')+cls);
  m.appendChild(el('div','meta',`${f.mine?'you':f.from} · t${f.tick}${f.sector?' · '+f.sector:''}`));
  if(f.type==='beacon'){const b=el('div','body'),d=el('span','dot');d.style.background=f.color;
   b.append(d,el('span',null,'sent '+(f.label||colorName(f.color))));m.appendChild(b);}
  else if(f.type==='help_request'){m.append(el('div','head',`🆘 ${String(q.kind||'').toUpperCase()} · urgency ${'●'.repeat(q.urgency||0)}`),
   el('div','sub',`${q.people} ${q.people===1?'person':'people'} affected`));if(q.text)m.appendChild(el('div','body',q.text));}
+ else if(f.type==='checkin'){const[sn,sc]=STAT[q.status]||[q.status,'#888'];
+  const hd=el('div','head');const d=el('span','dot');d.style.background=sc;hd.append(d,` ${sn} · ${roomName(q.sector)}`);
+  m.appendChild(hd);if(q.note)m.appendChild(el('div','body',q.note));}
  else if(f.type==='health_report'){const ago=day-q.onset_day;
   m.append(el('div','head','🩺 '+(q.sym||[]).map(x=>SYMTXT[x]||x).join(', ')),
   el('div','sub',`severity ${q.severity} · ${q.sick} sick at home · since ${ago<=0?'today':ago===1?'yesterday':ago+' days ago'}`));}
@@ -396,8 +431,12 @@ function renderPhone(p){lastP=p;
  $('pheld').textContent=`holds ${p.held}/${p.total}`;
  TABS.forEach(([id],i)=>{const n=id==='all'?0:(p.counts||{})[id]||0;tabB[i].querySelector('.n').textContent=n?(n>99?'99+':n):'';});
  const list=ptab==='all'?p.feed:((p.tabs||{})[ptab]||[]);
- const key=ptab+'|'+list.map(f=>f.from+':'+f.seq).join();if(key===feedKey)return;feedKey=key;  // only redraw on change
+ const fam=ptab==='checkin';
+ const key=ptab+'|'+list.map(f=>f.from+':'+f.seq).join()+(fam?'|'+JSON.stringify(p.family)+p.sealed+'|'+Math.floor((snap?snap.tick:0)/3):'');
+ if(key===feedKey)return;feedKey=key;  // only redraw on change
  const box=$('pfeed');box.replaceChildren();
+ if(fam){box.appendChild(famCards(p));
+  box.appendChild(el('div','sealed',`🔒 Also carrying ${p.sealed} sealed check-ins from other families. It passes them on but can't read them.`));}
  if(!list.length){box.appendChild(el('div','empty',TABS.find(t=>t[0]===ptab)[4]));return;}
  for(const f of list)box.appendChild(bubble(f,p.day||0));}
 // Click / hover hit-test against where each figure is drawn right now.
@@ -418,9 +457,18 @@ function hit(e,reach=.8){if(!snap||!st)return null;const[mx,my]=mpos(e);
  st.forEach((s,i)=>{if(s.hide>0)return;const d=Math.hypot(mx-s.x*w,my-(s.y*h-sz*.45));if(d<bd){bd=d;best=i;}});
  return best;}
 // Over a stairwell, a person only wins if you click right on them (people crowd stair rooms).
-cv.addEventListener('click',e=>{const se=stairAt(e),i=hit(e,se!==null?.45:.8);
+// SOS markers: where each recent call came from (boxes are set by draw(), every frame)
+let sosHits=[];
+function sosAt(e){const[mx,my]=mpos(e);return sosHits.find(b=>mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h)||null;}
+function sosTitle(m){const s=S[m.sector],lv=m.levels.map(l=>'L'+l).join(', ')||'nobody yet';
+ return `SOS from r${m.from} in ${s.name} (L${s.level}), ${ago(m.tick)}: ${m.kind}, ${m.people} people, urgency ${m.urgency}`+
+  `${m.text?' · “'+m.text+'”':''}\nPhones holding it on: ${lv}${m.levels.length<4?' (not everywhere yet)':''}\nClick to open the sender's phone`;}
+cv.addEventListener('click',e=>{const sb=sosAt(e);if(sb){openPhone(sb.m.from);return;}
+ const se=stairAt(e),i=hit(e,se!==null?.45:.8);
  if(i!==null)openPhone(i);else if(se!==null)send({cmd:'toggle_stairwell',id:E[se].id});});
-cv.addEventListener('mousemove',e=>{const se=stairAt(e),i=hit(e,se!==null?.45:.8);
+cv.addEventListener('mousemove',e=>{const sb=sosAt(e);
+ if(sb){hoverStair=null;cv.style.cursor='pointer';cv.title=sosTitle(sb.m);return;}
+ const se=stairAt(e),i=hit(e,se!==null?.45:.8);
  hoverStair=i===null?se:null;cv.style.cursor=i!==null||se!==null?'pointer':'default';
  cv.title=hoverStair!==null&&snap?`Stairwell ${EA[se][0].name} ↕ ${EA[se][1].name}: click to ${snap.edges[se]===2?'reopen':'close'}`:'';});
 cv.addEventListener('mouseleave',()=>{hoverStair=null;});
@@ -535,12 +583,39 @@ function draw(){
  if(ob!=null&&ob!==sel&&st[ob]&&!(st[ob].hide>0)){const s=st[ob],fx=X(s.x),fy=Y(s.y)-sz*.45;
   g.strokeStyle=DEF;g.lineWidth=1.5;g.setLineDash([3,3]);g.beginPath();g.arc(fx,fy,sz*.7,0,6.283);g.stroke();g.setLineDash([]);
   g.fillStyle=DEF;g.font='bold 10px system-ui';g.textAlign='center';g.fillText('📊 r'+ob,fx,fy-sz*.8);g.textAlign='left';}
+ if(sel!==null&&lastP&&lastP.id===sel&&st[sel]){const a=st[sel];                // lines to the open phone's family
+  g.setLineDash([5,4]);g.lineWidth=1.5;
+  for(const f of lastP.family||[]){if(f.me||!st[f.id])continue;const b=st[f.id];
+   g.strokeStyle=f.status?STAT[f.status][1]:'#888';g.beginPath();g.moveTo(X(a.x),Y(a.y)-sz*.5);g.lineTo(X(b.x),Y(b.y)-sz*.5);g.stroke();
+   g.beginPath();g.arc(X(b.x),Y(b.y)-sz*.45,sz*.6,0,6.283);g.stroke();}
+  g.setLineDash([]);}
  if(sel!==null&&st[sel]&&!(st[sel].hide>0)){const s=st[sel],fx=X(s.x),fy=Y(s.y)-sz*.45;   // selected resident
   g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(fx,fy,sz*.7,0,6.283);g.stroke();
   g.fillStyle='#fff';g.font='bold 11px system-ui';g.textAlign='center';g.fillText('r'+sel,fx,fy-sz*.8);g.textAlign='left';}
+ drawSOS();
  parts=parts.filter(p=>(p.t+=.04)<1);
  for(const p of parts){const a=S[p.a],b=S[p.b];g.fillStyle='#fff';g.beginPath();
   g.arc(X(a.x+(b.x-a.x)*p.t),Y(a.y+(b.y-a.y)*p.t+FL-.02),3,0,6.283);g.fill();}
 }
+// One marker per recent SOS, in the room it was sent from: pulse, kind · people, and four
+// level pips that light up as phones on each level receive it.
+function drawSOS(){sosHits=[];const now=performance.now()/1000,used={},rh=h*RH;
+ for(const m of [...(snap.sos||[])].reverse()){const s=S[m.sector];if(!s)continue;   // oldest first, newest on top
+  const k=used[m.sector]=(used[m.sector]||0)+1,rw=w*s.w;
+  const cx=w*s.x-rw/2+20+(k-1)*Math.min(110,rw/2),cy=h*s.y-rh/2+34;
+  const age=snap.tick-m.tick,fade=age>72?.55:1,ph=(now*.8+m.tick*.13)%1;
+  g.globalAlpha=fade*(1-ph);g.strokeStyle='#ff3b30';g.lineWidth=2.5;                 // pulse
+  g.beginPath();g.arc(cx,cy,10+ph*16,0,6.283);g.stroke();
+  g.globalAlpha=fade;g.fillStyle='#ff3b30';g.beginPath();g.arc(cx,cy,10,0,6.283);g.fill();
+  g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();
+  g.fillStyle='#fff';g.font='bold 7.5px system-ui';g.textAlign='center';g.fillText('SOS',cx,cy+2.7);g.textAlign='left';
+  const lab=`${m.kind.toUpperCase()} · ${m.people}`;g.font='bold 11px system-ui';
+  const tw=g.measureText(lab).width,bx=cx+14,bw=tw+16+4*9,by=cy-9;                     // label pill + level pips
+  g.fillStyle='rgba(20,6,5,.85)';g.beginPath();g.roundRect?g.roundRect(bx,by,bw,18,9):g.rect(bx,by,bw,18);g.fill();
+  g.strokeStyle='#ff3b30';g.lineWidth=1;g.stroke();
+  g.fillStyle='#fff';g.fillText(lab,bx+7,cy+4);
+  for(let l=0;l<4;l++){const on=m.levels.includes(l);g.fillStyle=on?T[l].acc:'#4a3b36';
+   g.fillRect(bx+tw+12+l*9,cy-3.5,6,7);}
+  g.globalAlpha=1;sosHits.push({x:cx-12,y:cy-12,w:bx+bw-(cx-12),h:24,m});}}
 draw();
 </script>

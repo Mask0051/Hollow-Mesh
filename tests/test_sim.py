@@ -44,8 +44,15 @@ def test_world_sector_ids_match_payload_format(world):
 # --- convergence -------------------------------------------------------------------------
 
 
-def test_every_feed_starts_with_a_profile_and_spreads_everywhere(world):
-    sim = Sim(world, seed=1, n_residents=N)
+@pytest.fixture
+def quiet(monkeypatch):
+    """No background traffic (chatter, check-ins): a convergence check sees a still mesh."""
+    monkeypatch.setattr("hollowmesh.sim.runner.POST_P", 0)
+    monkeypatch.setattr("hollowmesh.sim.runner.CHECKIN_P", 0)
+
+
+def test_every_feed_starts_with_a_profile_and_spreads_everywhere(world, quiet):
+    sim = Sim(world, seed=1, n_residents=N, sickness=False)
     run(sim, 15)
     vvs = [r["node"].version_vector() for r in sim.residents]
     assert all(vv == vvs[0] for vv in vvs)  # everyone converged
@@ -127,10 +134,9 @@ def test_lying_relay_raises_a_real_tamper_alert(world):
     assert len(ids) == len(set(ids))
 
 
-def test_tampering_loses_nothing_once_healed(world, monkeypatch):
-    # No random posts: one sent on the last tick would still be in flight.
-    monkeypatch.setattr("hollowmesh.sim.runner.POST_P", 0)
-    sim = Sim(world, seed=8, n_residents=N)
+def test_tampering_loses_nothing_once_healed(world, quiet):
+    # No background traffic: a record sent on the last tick would still be in flight.
+    sim = Sim(world, seed=8, n_residents=N, sickness=False)
     sim.queue_cmd({"cmd": "cut_network"})
     for sid in stairwells(sim):
         sim.queue_cmd({"cmd": "tamper", "id": sid})
@@ -218,7 +224,7 @@ def test_beacon_only_colours_who_it_reached(world):
     sim.tick()
     sender = next(r for r in sim.residents if sim._level(r) == 3)
     sim.queue_cmd({"cmd": "beacon", "resident": sender["id"], "color": "#ff3b30"})
-    snap = run(sim, 30)[-1]
+    snap = run(sim, 60)[-1]
     for r in sim.residents:  # cut off from level 3: still the default colour
         assert (snap["colors"][r["id"]] == "#ff3b30") == (sim._level(r) == 3)
 
@@ -473,7 +479,7 @@ def test_phone_sends_sos_and_health_reports_into_their_tabs(world):
     assert health["p"]["sym"] == ["cough", "fever"] and health["p"]["onset_day"] == p["day"] - 1
     here = sim.sectors[sim.residents[0]["sec"]]
     assert sos["p"]["sector"] == health["p"]["sector"] == here["id"]  # stamped at send time
-    assert p["tabs"]["beacon"][0]["color"] == "#22c55e"
+    assert any(f["type"] == "beacon" and f["color"] == "#22c55e" for f in p["feed"])  # in All
     assert all(e["type"] == t for t, es in p["tabs"].items() for e in es)
     assert p["counts"]["help_request"] == len(p["tabs"]["help_request"])
     run(sim, 30)
@@ -566,3 +572,18 @@ def test_sickness_can_be_switched_off(world):
     sim = Sim(world, seed=1, n_residents=N, sickness=False)
     snap = run(sim, 100)[-1]
     assert snap["sick"] == [] and snap["stats"]["truth"] == [0, 0, 0, 0]
+
+
+def test_sos_markers_show_where_it_came_from_and_how_far_it_got(world):
+    sim = Sim(world, seed=2, n_residents=N, sickness=False)
+    sim.queue_cmd({"cmd": "cut_network"})
+    sim.queue_cmd({"cmd": "cut_stairwell", "id": "ST-2-3-a"})
+    sim.queue_cmd({"cmd": "inject", "sector": "L3-S04"})
+    snap = run(sim, 10)[-1]
+    (m,) = snap["sos"]
+    assert sim.sectors[m["sector"]]["level"] == 3 and m["kind"] == "air" and m["people"] == 12
+    assert m["levels"] == [3]  # the shaft is cut: it can't leave the Deep
+    sim.queue_cmd({"cmd": "heal"})
+    assert run(sim, 40)[-1]["sos"][0]["levels"] == [0, 1, 2, 3]
+    run(sim, 150)
+    assert sim.snapshot()["sos"] == []  # older than a sim day: off the map

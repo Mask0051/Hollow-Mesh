@@ -1,8 +1,8 @@
 """P4 — Record payload schemas (Pydantic), Doc 2 §1.2.
 
 MVP: profile, post, help_request (optional reply_to).
-Target: health_report (P8, Countertally's input).
-Stretch: help_ack, checkin (encrypted), water_report, outage_report, tunnel_blocked, offer, vouch.
+Target: health_report (P8, Countertally's input), checkin (encrypted, family only).
+Stretch: help_ack, water_report, outage_report, tunnel_blocked, offer, vouch.
 Demo: beacon (our addition, not in Doc 2) — the dashboard colours every node holding it.
 
 Location is always level (0-3) + sector (e.g. "L2-S07"), never more precise.
@@ -81,6 +81,33 @@ class HealthReport(_Payload):
         return self
 
 
+B64 = r"^[A-Za-z0-9+/]*={0,2}$"
+
+
+class Checkin(_Payload):
+    """Family check-in, sealed with the family's shared key (SecretBox) and published from
+    the private feed. Relays see only ciphertext. No group tag: a phone tries each family
+    key it holds (Doc 2 §1.2). The plaintext is a CheckinBody."""
+
+    nonce: Annotated[str, Field(min_length=32, max_length=32, pattern=B64)]  # 24 bytes
+    ct: Annotated[str, Field(min_length=24, max_length=1024, pattern=B64)]
+
+
+class CheckinBody(_Payload):
+    """What a check-in says, once a family member decrypts it. Never on the wire in clear."""
+
+    status: Literal["ok", "hurt", "need_help", "moving"]
+    level: Level
+    sector: Sector
+    note: Annotated[str, Field(max_length=140)] = ""
+
+    @model_validator(mode="after")
+    def _sector_on_level(self) -> CheckinBody:
+        if self.sector[1] != str(self.level):
+            raise ValueError("sector is not on that level")
+        return self
+
+
 class Beacon(_Payload):
     """Demo record: shows how far one message has spread.
 
@@ -98,5 +125,6 @@ PAYLOAD_SCHEMAS: dict[str, type[BaseModel]] = {
     "post": Post,
     "help_request": HelpRequest,
     "health_report": HealthReport,
+    "checkin": Checkin,
     "beacon": Beacon,
 }
