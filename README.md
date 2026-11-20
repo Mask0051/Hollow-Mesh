@@ -1,8 +1,8 @@
-# Hollow Mesh
+# Rat King
 
 Patriot HackFest Fall 2026 · Track: Life Underground
 
-A mesh of signed, append-only feeds that gossip between nodes, so messages survive network cuts,
+**Rat King** is a peer-to-peer mesh of signed, append-only feeds that gossip between nodes, so messages survive network cuts,
 blackouts, and lying relays. **Countertally** runs on top and counts health reports so residents can
 compare them with the Directorate's official numbers.
 

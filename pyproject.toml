@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "hollowmesh"
 version = "0.1.0"
-description = "Hollow Mesh: signed-feed gossip mesh for the Hollow, plus Countertally"
+description = "Rat King: signed-feed gossip mesh for the Hollow, plus Countertally"
 requires-python = ">=3.11"
 
 # Core protocol (P1-P5): ed25519 signing + payload schemas. Nothing else at runtime.
