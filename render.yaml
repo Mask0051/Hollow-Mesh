@@ -1,0 +1,15 @@
+# Render blueprint for the public demo: render.com → New → Blueprint → pick this repo.
+# Each visitor gets their own private sim (max 5 at once). Free plan: sleeps after ~15 min
+# with no visitors, and the next visit takes ~30-60 s to wake it up.
+services:
+  - type: web
+    name: rat-king
+    runtime: python
+    plan: free
+    buildCommand: pip install -e ".[sim]"
+    # $PORT comes from Render. 150 residents keeps a free instance's small CPU in real time.
+    startCommand: python -m hollowmesh.sim --hosted --script --residents 150
+    healthCheckPath: /world.json
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
