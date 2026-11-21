@@ -29,7 +29,7 @@ On top of the mesh run the services people in the Hollow actually need:
   made them sick. Once 3+ households report it, every phone shows it as unsafe, and links
   it to any sickness on that level.
 
-> 🎬 **Video:** _link goes here_ · 🌐 **Try it in your browser:** _demo link goes here_ (your own private sim; first load can take ~1 min to wake up) · ▶️ **Run it locally:** `make venv && make demo` → http://localhost:8000
+> 🎬 **Video:** [watch the demo](https://youtu.be/q7GZwVnZExQ) · 🌐 **Try it in your browser:** [rat-king.onrender.com](https://rat-king.onrender.com) (your own private sim; first load can take ~1 min to wake up) · ▶️ **Run it locally:** `make venv && make demo` → http://localhost:8000
 
 ## Prompts we answer
 
@@ -238,7 +238,7 @@ Without make: `python -m venv .venv`, activate it, `pip install -e ".[dev,http,s
 then `python -m hollowmesh.sim --script`, `python -m pytest`,
 `python -m hollowmesh.sim.metrics && python -m hollowmesh.sim.plots`.
 
-**The online demo** runs on Render from [`render.yaml`](render.yaml): every visitor gets
+**The online demo** ([rat-king.onrender.com](https://rat-king.onrender.com)) runs on Render from [`render.yaml`](render.yaml): every visitor gets
 their own sim (at most 5 at once, ended after 15 minutes without a click), with 150
 residents so a free instance keeps up. Locally, `make demo` runs one shared sim that every
 open tab watches and controls.
