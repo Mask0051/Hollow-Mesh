@@ -268,7 +268,9 @@ open tab watches and controls.
 
 ## Team
 
-* **MK**: protocol (records, node, gossip), Countertally, check-ins, metrics.
+* **Mohammed Kabir**: the Rat King protocol (signed records, node, gossip sync); the
+  services on top: SOS, Countertally, Tail Count and Taster; the icons; metrics and
+  charts; the hosted demo on Render; and the demo video.
 * **Miguel**: the simulated Hollow and the live dashboard.
 
 ## AI tools
